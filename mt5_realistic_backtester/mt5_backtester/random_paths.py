@@ -17,19 +17,23 @@ PathModel = Literal["gbm", "ou", "jump", "regime"]
 
 @dataclass
 class PathSpec:
+    """Default path generator is tuned for XAUUSD."""
+
+    symbol: str = "XAUUSD"
     bars: int = 2000
     timeframe_seconds: float = 60.0
-    start_price: float = 1.08500
+    start_price: float = 2650.0
     # annualized-ish params scaled to bar
     mu_per_year: float = 0.0  # drift
-    sigma_per_year: float = 0.08  # volatility
-    jump_prob_per_bar: float = 0.002
-    jump_sigma: float = 0.0015
-    ou_theta: float = 0.05  # mean reversion speed
-    ou_mu: float = 1.08500
-    regime_switch_prob: float = 0.01
-    point: float = 0.00001
-    base_spread_points: float = 10.0
+    sigma_per_year: float = 0.16  # gold vol
+    jump_prob_per_bar: float = 0.003
+    jump_sigma: float = 0.0025
+    ou_theta: float = 0.03  # mean reversion speed
+    ou_mu: float = 2650.0
+    regime_switch_prob: float = 0.012
+    point: float = 0.01
+    digits: int = 2
+    base_spread_points: float = 25.0
     ticks_per_bar: int = 8
     model: PathModel = "jump"
     seed: int = 42
@@ -79,14 +83,14 @@ def generate_ohlc(spec: PathSpec) -> pd.DataFrame:
         wiggle = abs(rng.gauss(0.0, local_sigma * price * 0.7))
         h = max(o, c) + wiggle
         l = min(o, c) - wiggle
-        # widen spread proxy on jumps
+        d = spec.digits
         rows.append(
             {
                 "time": t0 + i * spec.timeframe_seconds,
-                "open": round(o, 5),
-                "high": round(h, 5),
-                "low": round(l, 5),
-                "close": round(c, 5),
+                "open": round(o, d),
+                "high": round(h, d),
+                "low": round(l, d),
+                "close": round(c, d),
                 "volume": rng.randint(30, 300),
             }
         )

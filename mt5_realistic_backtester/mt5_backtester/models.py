@@ -104,30 +104,34 @@ class Trade:
 
 @dataclass
 class BrokerConfig:
-    """Execution assumptions that separate 'lab' backtests from near-live."""
+    """Execution assumptions that separate 'lab' backtests from near-live.
 
+    Defaults target XAUUSD (Gold): point=0.01, contract_size=100 oz.
+    """
+
+    symbol: str = "XAUUSD"
     initial_balance: float = 10_000.0
     leverage: float = 100.0
-    contract_size: float = 100_000.0  # FX standard lot
-    point: float = 0.00001  # 5-digit FX
-    digits: int = 5
+    contract_size: float = 100.0  # XAUUSD: ounces per lot
+    point: float = 0.01  # XAUUSD 2-digit
+    digits: int = 2
 
     # Costs
-    commission_per_lot: float = 7.0  # round-turn USD per lot (typical ECN)
+    commission_per_lot: float = 6.0  # round-turn USD per lot (typical gold)
     swap_long_points: float = 0.0
     swap_short_points: float = 0.0
 
     # Friction
-    base_slippage_points: float = 2.0
-    volatility_slippage_factor: float = 0.5  # extra pts from recent range
-    latency_ms: float = 80.0
-    min_stop_level_points: float = 10.0
-    freeze_level_points: float = 5.0
+    base_slippage_points: float = 5.0
+    volatility_slippage_factor: float = 0.8  # extra pts from recent range
+    latency_ms: float = 100.0
+    min_stop_level_points: float = 30.0
+    freeze_level_points: float = 10.0
 
     # Spread model (used when tick has zero/constant spread)
-    min_spread_points: float = 8.0
-    max_spread_points: float = 40.0
-    spread_widen_on_gap_points: float = 25.0
+    min_spread_points: float = 15.0
+    max_spread_points: float = 120.0
+    spread_widen_on_gap_points: float = 40.0
 
     # Risk
     margin_call_level: float = 0.5  # 50%

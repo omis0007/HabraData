@@ -31,10 +31,18 @@ class MonteCarloConfig:
             self.realistic = BrokerConfig(optimistic=False)
         if self.compare_optimistic and self.optimistic is None:
             self.optimistic = BrokerConfig(
+                symbol=self.realistic.symbol if self.realistic else "XAUUSD",
+                initial_balance=self.realistic.initial_balance if self.realistic else 10_000.0,
+                contract_size=self.realistic.contract_size if self.realistic else 100.0,
+                point=self.realistic.point if self.realistic else 0.01,
+                digits=self.realistic.digits if self.realistic else 2,
                 optimistic=True,
                 commission_per_lot=0.0,
                 base_slippage_points=0.0,
+                volatility_slippage_factor=0.0,
                 latency_ms=0.0,
+                min_stop_level_points=0.0,
+                freeze_level_points=0.0,
                 min_spread_points=0.0,
             )
 

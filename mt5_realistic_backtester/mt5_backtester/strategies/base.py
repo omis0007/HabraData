@@ -36,9 +36,9 @@ class MovingAverageCross(Strategy):
         fast: int = 10,
         slow: int = 30,
         timeframe_seconds: float = 60.0,
-        lot: float = 0.1,
-        sl_points: float = 150.0,
-        tp_points: float = 250.0,
+        lot: float = 0.01,  # XAUUSD micro lot default
+        sl_points: float = 400.0,  # $4 on 2-digit gold
+        tp_points: float = 600.0,  # $6 on 2-digit gold
     ):
         self.fast = fast
         self.slow = slow

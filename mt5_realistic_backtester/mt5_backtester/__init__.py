@@ -6,6 +6,7 @@ from .montecarlo import MonteCarloConfig, run_monte_carlo
 from .random_paths import PathSpec
 from .report_audit import audit_mt5_report, audit_mt5_report_file
 from .strategies.base import MovingAverageCross, Strategy
+from .symbols import get_symbol, xauusd
 
 __all__ = [
     "BacktestEngine",
@@ -16,5 +17,7 @@ __all__ = [
     "Strategy",
     "audit_mt5_report",
     "audit_mt5_report_file",
+    "get_symbol",
     "run_monte_carlo",
+    "xauusd",
 ]

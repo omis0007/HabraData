@@ -138,26 +138,26 @@ def ohlc_to_ticks(
 
 
 def write_sample_ohlc(path: str | Path, bars: int = 500, seed: int = 7) -> Path:
-    """Generate a synthetic EURUSD M1-like series for demos/tests."""
+    """Generate a synthetic XAUUSD M1-like series for demos/tests."""
     rng = random.Random(seed)
     path = Path(path)
     t0 = 1_700_000_000.0
-    price = 1.08500
+    price = 2650.0
     rows = []
     for i in range(bars):
-        drift = rng.uniform(-0.00015, 0.00015)
-        shock = rng.choice([0.0, 0.0, 0.0, rng.uniform(-0.0004, 0.0004)])
+        drift = rng.uniform(-0.35, 0.35)
+        shock = rng.choice([0.0, 0.0, 0.0, rng.uniform(-1.2, 1.2)])
         o = price
-        c = max(0.5, o + drift + shock)
-        h = max(o, c) + abs(rng.uniform(0, 0.00025))
-        l = min(o, c) - abs(rng.uniform(0, 0.00025))
+        c = max(100.0, o + drift + shock)
+        h = max(o, c) + abs(rng.uniform(0, 0.6))
+        l = min(o, c) - abs(rng.uniform(0, 0.6))
         rows.append(
             {
                 "time": t0 + i * 60,
-                "open": round(o, 5),
-                "high": round(h, 5),
-                "low": round(l, 5),
-                "close": round(c, 5),
+                "open": round(o, 2),
+                "high": round(h, 2),
+                "low": round(l, 2),
+                "close": round(c, 2),
                 "volume": rng.randint(20, 200),
             }
         )
