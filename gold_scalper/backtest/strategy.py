@@ -13,15 +13,15 @@ from typing import List, Optional, Dict, Any
 class Params:
     stoch_period: int = 14
     stoch_k: int = 3
-    stoch_oversold: float = 15.0
-    stoch_overbought: float = 85.0
+    stoch_oversold: float = 10.0
+    stoch_overbought: float = 90.0
     ema_period: int = 20
-    stretch_min: float = 8.0  # USD from EMA20 (tuned)
-    move3_against_min: float = 2.5  # USD adverse move over last 3 M1 bars
+    stretch_min: float = 14.0  # USD from EMA20 (matched to live density)
+    move3_against_min: float = 5.0  # USD adverse move over last 3 M1 bars
     solo_tp: float = 1.5  # USD take-profit for single position
-    basket_tp: float = 0.15  # USD beyond weighted average for basket exit
+    basket_tp: float = 0.40  # USD beyond weighted average for basket exit
     grid_step: float = 6.0  # USD adverse from last entry to add
-    max_positions: int = 3
+    max_positions: int = 5
     lot: float = 0.05
     # UTC hours observed on the live account
     trade_hours: tuple = (2, 3, 4, 5, 6, 9, 10, 11, 15, 16, 17, 18)

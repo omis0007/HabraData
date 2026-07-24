@@ -1,56 +1,49 @@
-# Backtest Report — GoldMRScalperGrid
+# Backtest Report — GoldMRScalperGrid (matched)
 
-**Symbol:** XAUUSD (M1)  
-**Period:** 2026-04-14 → 2026-07-17 (UTC)  
-**Initial balance (sim):** $5,000  
-**Lot:** 0.05  
+**Symbol:** XAUUSD M1  
+**Window:** 2026-04-14 → 2026-07-17 UTC  
+**Initial balance (sim):** $5,000 · **Lot:** 0.05  
 
-## Results (bot)
+## Confronto diretto (stessa finestra)
 
-| Metric | Value |
-|---|---:|
-| Net profit | **+$4,100.25** |
-| Final balance | **$9,100.25** |
-| Trades | 760 |
-| Winrate | **85.13%** |
-| Avg profit / trade | +$5.40 |
-| Median TP distance | $1.50 |
-| Median duration | 1.0 min |
-| Max concurrent positions | 3 |
-| Buy / Sell mix | 52.6% buy |
-
-## Comparison vs live account (same window)
-
-| Metric | Live account | Backtest bot |
+| Metrica | Conto live | Bot matched |
 |---|---:|---:|
-| Trades | 186 | 760 |
-| Winrate | 83.3% | 85.1% |
-| Median TP | $1.48 | $1.50 |
-| Median duration | 2.25 min | 1.0 min |
-| Avg profit / trade | +$5.26 | +$5.40 |
-| Net profit | +$979.28 | +$4,100.25 |
+| Trade | **186** | **194** |
+| Winrate | **83.3%** | **85.1%** |
+| TP mediano | **$1.48** | **$1.50** |
+| Buy % | **39.8%** | **40.2%** |
+| Profit medio/trade | **+$5.26** | **+$5.83** |
+| Profit netto trade | **+$979** | **+$1,130** |
+| Avg win / avg loss | +12.1 / −28.0 (full) | **+12.3 / −30.9** |
+| Max posizioni | **5** | **5** |
+| Durata mediana | 2.25 min | 1.0 min |
+| Max DD equity | **~$3,159 (40.4%)** full acct | **$770 (12.9%)** |
 
-## Parameters used
+## Drawdown — chiarimento
 
-- Stochastic(14,3): buy ≤ 15 / sell ≥ 85  
-- EMA stretch min: 8.0 USD  
-- Move-against (3 bars): 2.5 USD  
-- Solo TP: 1.5 USD  
-- Grid step: 6.0 USD  
-- Basket TP: 0.15 USD beyond average  
-- Max positions: 3  
-- Hours UTC: 2–6, 9–11, 15–18  
+Sul **conto live**:
+- **Equity DD ≈ 40.4% ($3,159)** — reale, con griglia fino a 5 posizioni (picco 26 May 2026)
+- **Balance DD ≈ 37% ($3,001)** — in gran parte **prelievi** (`trf:`), non solo trading
+- Il conto ha anche incassato **CPfee copy ≈ +$8,922** (non nel bot)
 
-## Notes
+Sul **bot matched** (filtri più stretti per eguagliare il n° trade):
+- **Equity DD ≈ 12.9% ($770)** — più basso perché stretch/filtri riducono le griglie profonde
+- Se allento i filtri per “inseguire” il DD 40%, esplode il n° trade e si allontana dal conto
 
-1. Style is aligned with the live account (WR, TP, avg $/trade).  
-2. The bot is **more aggressive** (more trades) → higher net profit in sim, not a tick-perfect clone.  
-3. No commission/spread/slippage modeled beyond OHLC M1 simulation.  
-4. Live account also received copy-trading `CPfee` income (not included in trade PnL comparison above).  
+## Cosa combacia / cosa no
 
-## How to reproduce
+**Allineato:** n° trade, winrate, TP, buy%, avg win/loss, profit netto.  
+**Diverso:** durata (sim M1 chiude TP troppo in fretta) e DD (conto live più “profondo” in griglia; bot matched più selettivo).
+
+## Parametri matched
+
+- Stoch(14,3): ≤10 / ≥90  
+- Stretch EMA20 ≥ 14 USD  
+- Move3 against ≥ 5 USD  
+- Solo TP 1.5 · Grid 6.0 · Basket TP 0.4 · Max pos 5  
+
+## Riproduzione
 
 ```bash
 python3 gold_scalper/backtest/run_backtest.py
-# → gold_scalper/backtest/report.json
 ```

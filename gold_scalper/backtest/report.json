@@ -15,15 +15,15 @@
   "params": {
     "stoch_period": 14,
     "stoch_k": 3,
-    "stoch_oversold": 15.0,
-    "stoch_overbought": 85.0,
+    "stoch_oversold": 10.0,
+    "stoch_overbought": 90.0,
     "ema_period": 20,
-    "stretch_min": 8.0,
-    "move3_against_min": 2.5,
+    "stretch_min": 14.0,
+    "move3_against_min": 5.0,
     "solo_tp": 1.5,
-    "basket_tp": 0.15,
+    "basket_tp": 0.4,
     "grid_step": 6.0,
-    "max_positions": 3,
+    "max_positions": 5,
     "lot": 0.05,
     "trade_hours": [
       2,
@@ -43,19 +43,19 @@
     "point_value_per_lot": 100.0
   },
   "backtest": {
-    "n_positions": 760,
-    "winrate": 0.8513157894736842,
-    "avg_profit": 5.395065789473261,
-    "sum_profit": 4100.249999999678,
+    "n_positions": 194,
+    "winrate": 0.8505154639175257,
+    "avg_profit": 5.827319587628489,
+    "sum_profit": 1130.499999999927,
     "median_duration_min": 1.0,
     "median_tp_dist": 1.5,
-    "buy_pct": 0.5263157894736842,
-    "final_balance": 9100.249999999678,
-    "max_concurrent_observed": 3
+    "buy_pct": 0.4020618556701031,
+    "final_balance": 6130.499999999926,
+    "max_concurrent_observed": 5
   },
   "alignment": {
     "winrate_bt_vs_account": [
-      0.8513157894736842,
+      0.8505154639175257,
       0.8333333333333334
     ],
     "tp_bt_vs_account": [
@@ -67,11 +67,11 @@
       2.25
     ],
     "profit_bt_vs_account": [
-      4100.249999999678,
+      1130.499999999927,
       979.28
     ],
     "trades_bt_vs_account": [
-      760,
+      194,
       186
     ],
     "notes": "Style metrics (WR/TP/duration) align; bot takes more signals than the live provider (less selective). Same-direction grid recovery confirmed."
