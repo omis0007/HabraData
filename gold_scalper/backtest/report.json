@@ -17,6 +17,10 @@
     "stoch_k": 3,
     "stoch_oversold": 10.0,
     "stoch_overbought": 90.0,
+    "use_demarker": true,
+    "demarker_period": 14,
+    "demarker_oversold": 0.3,
+    "demarker_overbought": 0.7,
     "ema_period": 20,
     "stretch_min": 14.0,
     "move3_against_min": 5.0,
@@ -43,19 +47,19 @@
     "point_value_per_lot": 100.0
   },
   "backtest": {
-    "n_positions": 194,
-    "winrate": 0.8505154639175257,
-    "avg_profit": 5.827319587628489,
-    "sum_profit": 1130.499999999927,
+    "n_positions": 188,
+    "winrate": 0.8457446808510638,
+    "avg_profit": 5.7739361702123775,
+    "sum_profit": 1085.4999999999268,
     "median_duration_min": 1.0,
     "median_tp_dist": 1.5,
-    "buy_pct": 0.4020618556701031,
-    "final_balance": 6130.499999999926,
+    "buy_pct": 0.39893617021276595,
+    "final_balance": 6085.499999999926,
     "max_concurrent_observed": 5
   },
   "alignment": {
     "winrate_bt_vs_account": [
-      0.8505154639175257,
+      0.8457446808510638,
       0.8333333333333334
     ],
     "tp_bt_vs_account": [
@@ -67,13 +71,13 @@
       2.25
     ],
     "profit_bt_vs_account": [
-      1130.499999999927,
+      1085.4999999999268,
       979.28
     ],
     "trades_bt_vs_account": [
-      194,
+      188,
       186
     ],
-    "notes": "Style metrics (WR/TP/duration) align; bot takes more signals than the live provider (less selective). Same-direction grid recovery confirmed."
+    "notes": "Entries require Stochastic extreme + DeMarker (iDeMarker) confirmation (0.3/0.7). Style metrics (WR/TP) align; same-direction grid recovery."
   }
 }

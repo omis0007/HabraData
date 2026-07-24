@@ -2,9 +2,10 @@
 //|                                              GoldMRScalperGrid.mq5 |
 //| Mean-reversion gold scalper + same-direction grid recovery         |
 //| Reverse-engineered from live XAUUSD.pr investor history            |
+//| Entries: Stochastic + DeMarker (iDeMarker) confirmation            |
 //+------------------------------------------------------------------+
 #property copyright "Reverse-engineered gold MR scalper"
-#property version   "1.00"
+#property version   "1.10"
 #property strict
 
 input string InpSymbol           = "";          // empty = chart symbol
@@ -14,6 +15,10 @@ input int    InpStochK           = 3;
 input int    InpStochD           = 3;
 input double InpStochOS          = 10.0;        // oversold (matched)
 input double InpStochOB          = 90.0;        // overbought (matched)
+input bool   InpUseDeMarker      = true;        // confirm entries with iDeMarker
+input int    InpDeMPeriod        = 14;          // DeMarker period
+input double InpDeMOS            = 0.30;        // DeMarker oversold
+input double InpDeMOB            = 0.70;        // DeMarker overbought
 input int    InpEmaPeriod        = 20;
 input double InpStretchMin       = 14.0;        // USD from EMA (matched)
 input double InpMove3Min         = 5.0;         // adverse M1 move over 3 bars
@@ -26,6 +31,7 @@ input bool   InpUseHourFilter    = true;
 
 int hStoch = INVALID_HANDLE;
 int hEma   = INVALID_HANDLE;
+int hDeM   = INVALID_HANDLE;
 
 bool HourAllowed()
 {
@@ -125,7 +131,9 @@ int OnInit()
 {
    hStoch = iStochastic(Sym(), PERIOD_M1, InpStochPeriod, InpStochK, InpStochD, MODE_SMA, STO_LOWHIGH);
    hEma   = iMA(Sym(), PERIOD_M1, InpEmaPeriod, 0, MODE_EMA, PRICE_CLOSE);
+   hDeM   = iDeMarker(Sym(), PERIOD_M1, InpDeMPeriod);
    if(hStoch==INVALID_HANDLE || hEma==INVALID_HANDLE) return INIT_FAILED;
+   if(InpUseDeMarker && hDeM==INVALID_HANDLE) return INIT_FAILED;
    return INIT_SUCCEEDED;
 }
 
@@ -133,6 +141,7 @@ void OnDeinit(const int reason)
 {
    if(hStoch!=INVALID_HANDLE) IndicatorRelease(hStoch);
    if(hEma!=INVALID_HANDLE) IndicatorRelease(hEma);
+   if(hDeM!=INVALID_HANDLE) IndicatorRelease(hDeM);
 }
 
 void OnTick()
@@ -142,12 +151,19 @@ void OnTick()
    if(t == lastBar) return; // new M1 bar only
    lastBar = t;
 
-   double stochMain[], stochSig[], ema[];
+   double stochMain[], stochSig[], ema[], dem[];
    ArraySetAsSeries(stochMain, true);
    ArraySetAsSeries(stochSig, true);
    ArraySetAsSeries(ema, true);
+   ArraySetAsSeries(dem, true);
    if(CopyBuffer(hStoch, 0, 0, 5, stochMain) < 5) return;
    if(CopyBuffer(hEma, 0, 0, 5, ema) < 5) return;
+   double demVal = 0.5;
+   if(InpUseDeMarker)
+   {
+      if(CopyBuffer(hDeM, 0, 0, 5, dem) < 5) return;
+      demVal = dem[1];
+   }
 
    double close0 = iClose(Sym(), PERIOD_M1, 1); // last closed bar
    double close3 = iClose(Sym(), PERIOD_M1, 4);
@@ -201,8 +217,11 @@ void OnTick()
    if(count > 0) return;
    if(!HourAllowed()) return;
 
-   // Fresh entries on mean-reversion extremes
-   if(st <= InpStochOS)
+   // Fresh entries: Stochastic extreme + DeMarker confirmation + stretch/move
+   bool demBuy  = (!InpUseDeMarker) || (demVal <= InpDeMOS);
+   bool demSell = (!InpUseDeMarker) || (demVal >= InpDeMOB);
+
+   if(st <= InpStochOS && demBuy)
    {
       double stretch = em - close0;
       double against = -move3;
@@ -212,7 +231,7 @@ void OnTick()
          OpenTrade(ORDER_TYPE_BUY, tp);
       }
    }
-   else if(st >= InpStochOB)
+   else if(st >= InpStochOB && demSell)
    {
       double stretch = close0 - em;
       double against = move3;

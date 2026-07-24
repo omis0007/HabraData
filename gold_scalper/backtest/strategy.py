@@ -15,6 +15,11 @@ class Params:
     stoch_k: int = 3
     stoch_oversold: float = 10.0
     stoch_overbought: float = 90.0
+    # DeMarker (iDeMarker) confirmation — classic 0.3 / 0.7 bands
+    use_demarker: bool = True
+    demarker_period: int = 14
+    demarker_oversold: float = 0.30
+    demarker_overbought: float = 0.70
     ema_period: int = 20
     stretch_min: float = 14.0  # USD from EMA20 (matched to live density)
     move3_against_min: float = 5.0  # USD adverse move over last 3 M1 bars
@@ -173,33 +178,54 @@ def compute_indicators(bars: List[Dict[str, float]], p: Params):
         ):
             stoch[i] = sum(raw[i - p.stoch_k + 1 : i + 1]) / p.stoch_k
 
-    return ema, stoch
+    # DeMarker (same definition as MT5 iDeMarker)
+    demax = [0.0] * len(closes)
+    demin = [0.0] * len(closes)
+    for i in range(1, len(closes)):
+        up = highs[i] - highs[i - 1]
+        dn = lows[i - 1] - lows[i]
+        demax[i] = up if up > 0 else 0.0
+        demin[i] = dn if dn > 0 else 0.0
+    dem = [None] * len(closes)
+    dn_period = p.demarker_period
+    for i in range(dn_period, len(closes)):
+        smax = sum(demax[i - dn_period + 1 : i + 1])
+        smin = sum(demin[i - dn_period + 1 : i + 1])
+        den = smax + smin
+        dem[i] = 0.0 if den == 0 else smax / den
+
+    return ema, stoch, dem
 
 
 def hour_utc(ts: int) -> int:
     return (ts % 86400) // 3600
 
 
-def signal_at(i: int, bars, ema, stoch, p: Params) -> Optional[str]:
-    if i < max(p.ema_period, p.stoch_period + p.stoch_k, 5):
+def signal_at(i: int, bars, ema, stoch, dem, p: Params) -> Optional[str]:
+    warm = max(p.ema_period, p.stoch_period + p.stoch_k, p.demarker_period, 5)
+    if i < warm:
         return None
     if stoch[i] is None:
+        return None
+    if p.use_demarker and dem[i] is None:
         return None
     if hour_utc(bars[i]["time"]) not in p.trade_hours:
         return None
 
     close = bars[i]["close"]
     move3 = close - bars[i - 3]["close"]
+    dem_ok_buy = (not p.use_demarker) or (dem[i] <= p.demarker_oversold)
+    dem_ok_sell = (not p.use_demarker) or (dem[i] >= p.demarker_overbought)
 
-    # Buy: oversold + stretched below EMA + recent dump
-    if stoch[i] <= p.stoch_oversold:
+    # Buy: Stoch OS + DeMarker OS + stretched below EMA + recent dump
+    if stoch[i] <= p.stoch_oversold and dem_ok_buy:
         stretch = ema[i] - close
         against = -move3  # positive if price fell
         if stretch >= p.stretch_min and against >= p.move3_against_min:
             return "buy"
 
-    # Sell: overbought + stretched above EMA + recent rally
-    if stoch[i] >= p.stoch_overbought:
+    # Sell: Stoch OB + DeMarker OB + stretched above EMA + recent rally
+    if stoch[i] >= p.stoch_overbought and dem_ok_sell:
         stretch = close - ema[i]
         against = move3
         if stretch >= p.stretch_min and against >= p.move3_against_min:
@@ -211,7 +237,7 @@ def signal_at(i: int, bars, ema, stoch, p: Params) -> Optional[str]:
 def run_backtest(bars: List[Dict[str, float]], params: Optional[Params] = None) -> Engine:
     p = params or Params()
     eng = Engine(params=p, balance=5000.0)
-    ema, stoch = compute_indicators(bars, p)
+    ema, stoch, dem = compute_indicators(bars, p)
 
     for i, bar in enumerate(bars):
         ts = int(bar["time"])
@@ -229,7 +255,7 @@ def run_backtest(bars: List[Dict[str, float]], params: Optional[Params] = None) 
                 eng.try_open(open_side, price, ts)
 
         # fresh signals only when flat or same side (try_open handles)
-        sig = signal_at(i, bars, ema, stoch, p)
+        sig = signal_at(i, bars, ema, stoch, dem, p)
         if sig:
             # if flat -> open; if same side -> try_open may grid
             if not eng.positions:

@@ -1,23 +1,23 @@
-# Backtest Report — GoldMRScalperGrid (matched)
+# Backtest Report — GoldMRScalperGrid (matched + DeMarker)
 
 **Symbol:** XAUUSD M1  
 **Window:** 2026-04-14 → 2026-07-17 UTC  
 **Initial balance (sim):** $5,000 · **Lot:** 0.05  
+**Entry filter:** Stochastic + **DeMarker (`iDeMarker`)** conferma OS/OB  
 
 ## Confronto diretto (stessa finestra)
 
-| Metrica | Conto live | Bot matched |
+| Metrica | Conto live | Bot + DeMarker |
 |---|---:|---:|
-| Trade | **186** | **194** |
-| Winrate | **83.3%** | **85.1%** |
+| Trade | **186** | **188** |
+| Winrate | **83.3%** | **84.6%** |
 | TP mediano | **$1.48** | **$1.50** |
-| Buy % | **39.8%** | **40.2%** |
-| Profit medio/trade | **+$5.26** | **+$5.83** |
-| Profit netto trade | **+$979** | **+$1,130** |
-| Avg win / avg loss | +12.1 / −28.0 (full) | **+12.3 / −30.9** |
+| Buy % | **39.8%** | **39.9%** |
+| Profit medio/trade | **+$5.26** | **+$5.77** |
+| Profit netto trade | **+$979** | **+$1,085** |
 | Max posizioni | **5** | **5** |
 | Durata mediana | 2.25 min | 1.0 min |
-| Max DD equity | **~$3,159 (40.4%)** full acct | **$770 (12.9%)** |
+| Max DD equity (trading) | **~$706 (~7%)** | **~$770** |
 
 ## Drawdown — chiarimento
 
@@ -38,6 +38,7 @@ Sul **bot matched** (filtri più stretti per eguagliare il n° trade):
 ## Parametri matched
 
 - Stoch(14,3): ≤10 / ≥90  
+- **DeMarker(14): ≤0.30 buy / ≥0.70 sell** (disattivabile con `use_demarker=false` / `InpUseDeMarker`)  
 - Stretch EMA20 ≥ 14 USD  
 - Move3 against ≥ 5 USD  
 - Solo TP 1.5 · Grid 6.0 · Basket TP 0.4 · Max pos 5  
