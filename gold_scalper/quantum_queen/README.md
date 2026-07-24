@@ -16,5 +16,5 @@ python3 gold_scalper/quantum_queen/backtest_qqx.py
 - Finestra: 2026-04-14 → 2026-07-17 UTC (~3 mesi)
 - Saldo iniziale: **$5.000**
 - Set: **IC Markets RAW HIGH RISK** → S01, S08, S10, S12
-- Lotti: Auto Low-Medium (`balance/100000`)
+- Lotti: Auto **Medium** (`balance/60000`)
 - DD lock: 25% equity
