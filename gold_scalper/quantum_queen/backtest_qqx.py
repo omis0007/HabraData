@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Approximate backtest of Quantum Queen X v4.1 recovered portfolio on XAU M1.
+"""Approximate backtest of Quantum Queen X recovered portfolio.
 
-Source: recovered MQ5 (dual iDeMarker + same-direction grid). Not the official
-binary — results are indicative on the available M1 OHLC window.
+Supports asset presets: XAU | NAS100 | US30 | ATR_AUTO
+(scales TP/grid vs gold point distances; remaps sessions for US indices).
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -15,15 +16,36 @@ from statistics import mean, median
 from typing import Dict, List, Optional, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
-POINT = 0.01  # XAU digits=2
-POINT_VALUE_PER_LOT = 100.0  # $ per $1 move per 1.0 lot
+
+# Gold-native: digits=2 → TP/grid = raw_points * 0.01
+GOLD_POINT = 0.01
+
+
+@dataclass
+class AssetConfig:
+    name: str
+    scale: float  # multiplies gold price distances (TP/grid)
+    point_value_per_lot: float
+    us_index_hours: bool
+    use_atr: bool = False
+    atr_ref: float = 4.0
+    atr_period: int = 14
+    lot_mode: str = "auto_high"
+
+
+ASSETS: Dict[str, AssetConfig] = {
+    "XAU": AssetConfig("XAU", 1.0, 100.0, False),
+    "NAS100": AssetConfig("NAS100", 8.0, 1.0, True),
+    "US30": AssetConfig("US30", 13.0, 1.0, True),
+    "ATR_AUTO": AssetConfig("ATR_AUTO", 1.0, 1.0, True, use_atr=True),
+}
 
 
 @dataclass
 class Profile:
     number: int
     family: int
-    first_tf: int  # minutes
+    first_tf: int
     first_period: int
     first_upper: float
     first_lower: float
@@ -33,13 +55,12 @@ class Profile:
     second_lower: float
     session_start: int
     session_end: int
-    native_dir: int  # 1 buy-only, -1 sell-only, 0 both
+    native_dir: int
     tp_base: int
     grid_base: int
     orders_max: int
 
 
-# IC Markets RAW HIGH RISK enabled modules (see RecoveredStrategyEnabled)
 PROFILES: List[Profile] = [
     Profile(1, 1, 6, 18, 0.7, 0.3, 15, 16, 0.7, 0.3, 22, 24, 1, 50, 150, 25),
     Profile(8, 4, 5, 12, 0.5, 0.3, 60, 20, 0.9, 0.3, 6, 12, 1, 150, 150, 25),
@@ -50,7 +71,7 @@ PROFILES: List[Profile] = [
 
 @dataclass
 class Position:
-    side: int  # 1 buy / -1 sell
+    side: int
     entry: float
     volume: float
     open_time: int
@@ -72,6 +93,7 @@ class Closed:
 
 @dataclass
 class Engine:
+    asset: AssetConfig
     balance: float = 5000.0
     equity_peak: float = 5000.0
     dd_lock: bool = False
@@ -79,25 +101,28 @@ class Engine:
     positions: Dict[int, List[Position]] = field(default_factory=dict)
     closed: List[Closed] = field(default_factory=list)
     equity_curve: List[dict] = field(default_factory=list)
-    lot_mode: str = "auto_high"  # High: balance/55250 (recovered EA)
     fixed_lot: float = 0.01
+    current_scale: float = 1.0
 
     def lot(self) -> float:
-        if self.lot_mode == "fixed":
+        mode = self.asset.lot_mode
+        if mode == "fixed":
             return self.fixed_lot
-        if self.lot_mode == "auto_low_medium":
+        if mode == "auto_low_medium":
             return max(0.01, round(self.balance / 100000.0, 2))
-        if self.lot_mode == "auto_medium":
+        if mode == "auto_medium":
             return max(0.01, round(self.balance / 60000.0, 2))
-        # High
         return max(0.01, round(self.balance / 55250.0, 2))
+
+    def pv(self) -> float:
+        return self.asset.point_value_per_lot
 
     def floating(self, price: float) -> float:
         pnl = 0.0
         for legs in self.positions.values():
             for p in legs:
                 delta = (price - p.entry) if p.side > 0 else (p.entry - price)
-                pnl += delta * p.volume * POINT_VALUE_PER_LOT
+                pnl += delta * p.volume * self.pv()
         return pnl
 
     def equity(self, price: float) -> float:
@@ -110,7 +135,7 @@ class Engine:
         basket = len(legs)
         for p in legs:
             delta = (price - p.entry) if p.side > 0 else (p.entry - price)
-            profit = delta * p.volume * POINT_VALUE_PER_LOT
+            profit = delta * p.volume * self.pv()
             self.balance += profit
             self.closed.append(
                 Closed(
@@ -177,6 +202,27 @@ def demarker(bars: List[dict], period: int) -> List[Optional[float]]:
     return out
 
 
+def atr_series(m1: List[dict], period: int) -> List[Optional[float]]:
+    n = len(m1)
+    atr: List[Optional[float]] = [None] * n
+    if n < 2:
+        return atr
+    trs = [0.0] * n
+    for i in range(1, n):
+        trs[i] = max(
+            m1[i]["high"] - m1[i]["low"],
+            abs(m1[i]["high"] - m1[i - 1]["close"]),
+            abs(m1[i]["low"] - m1[i - 1]["close"]),
+        )
+    if n <= period:
+        return atr
+    first = sum(trs[1 : period + 1]) / period
+    atr[period] = first
+    for i in range(period + 1, n):
+        atr[i] = (atr[i - 1] * (period - 1) + trs[i]) / period
+    return atr
+
+
 def threshold_dir(value: float, upper: float, lower: float) -> int:
     if value > upper:
         return 1
@@ -190,18 +236,21 @@ def is_nfp_friday(ts: int) -> bool:
     return dt.weekday() == 4 and dt.day <= 7
 
 
+def session_ok(p: Profile, hour: int, us_hours: bool) -> bool:
+    if us_hours:
+        return 13 <= hour < 21
+    return p.session_start <= hour < p.session_end
+
+
 def build_dem_maps(m1: List[dict], profiles: List[Profile]):
-    """For each TF/period pair used, map bar_open_time -> demarker of last closed bar."""
     needed: Dict[Tuple[int, int], None] = {}
     for p in profiles:
         needed[(p.first_tf, p.first_period)] = None
         needed[(p.second_tf, p.second_period)] = None
-
     maps: Dict[Tuple[int, int], Dict[int, float]] = {}
     for tf, period in needed:
         bars = aggregate_tf(m1, tf)
         dem = demarker(bars, period)
-        # value at open of bar i uses closed bar i-1
         m: Dict[int, float] = {}
         for i in range(1, len(bars)):
             if dem[i - 1] is None:
@@ -217,24 +266,37 @@ def dem_at(maps, tf: int, period: int, ts: int) -> Optional[float]:
     return m.get(key)
 
 
-def run_backtest(m1: List[dict], initial: float = 5000.0) -> Engine:
-    eng = Engine(balance=initial, equity_peak=initial)
+def resolve_scale(asset: AssetConfig, atr_val: Optional[float]) -> float:
+    if asset.use_atr:
+        if atr_val is None or atr_val <= 0 or asset.atr_ref <= 0:
+            return 1.0
+        return max(0.25, atr_val / asset.atr_ref)
+    return asset.scale
+
+
+def run_backtest(
+    m1: List[dict],
+    asset: AssetConfig,
+    initial: float = 5000.0,
+) -> Engine:
+    eng = Engine(asset=asset, balance=initial, equity_peak=initial, current_scale=asset.scale)
     for p in PROFILES:
         eng.positions[p.number] = []
 
     maps = build_dem_maps(m1, PROFILES)
+    atrs = atr_series(m1, asset.atr_period) if asset.use_atr else [None] * len(m1)
     last_entry_bar = {p.number: 0 for p in PROFILES}
 
-    for b in m1:
+    for i, b in enumerate(m1):
         ts = int(b["time"])
         price = float(b["close"])
         high = float(b["high"])
         low = float(b["low"])
         dt = datetime.fromtimestamp(ts, tz=timezone.utc)
         hour = dt.hour
-        weekday = dt.weekday()  # Mon=0 ... Sun=6; MT5 Sun=0 mismatch — use Python then map
-        # MT5 day_of_week: 0=Sun … 5=Fri. Convert:
-        mt5_dow = (weekday + 1) % 7
+        mt5_dow = (dt.weekday() + 1) % 7
+        scale = resolve_scale(asset, atrs[i] if atrs else None)
+        eng.current_scale = scale
 
         eq = eng.equity(price)
         if eq > eng.equity_peak:
@@ -251,7 +313,6 @@ def run_backtest(m1: List[dict], initial: float = 5000.0) -> Engine:
             )
             continue
 
-        # --- entries on new first-TF bar when strategy flat ---
         for p in PROFILES:
             if eng.positions[p.number]:
                 continue
@@ -260,12 +321,11 @@ def run_backtest(m1: List[dict], initial: float = 5000.0) -> Engine:
                 continue
             last_entry_bar[p.number] = bar_key
 
-            # session / filters
-            if not (p.session_start <= hour < p.session_end):
+            if not session_ok(p, hour, asset.us_index_hours):
                 continue
-            if mt5_dow == 0 or mt5_dow == 6:  # Sun/Sat
+            if mt5_dow == 0 or mt5_dow == 6:
                 continue
-            if mt5_dow == 5 and hour >= 22:  # Friday night cutoff
+            if mt5_dow == 5 and hour >= 22:
                 continue
             if is_nfp_friday(ts):
                 continue
@@ -283,12 +343,10 @@ def run_backtest(m1: List[dict], initial: float = 5000.0) -> Engine:
             if p.native_dir < 0 and s1 > 0:
                 continue
 
-            vol = eng.lot()
             eng.positions[p.number].append(
-                Position(side=s1, entry=price, volume=vol, open_time=ts, strategy=p.number)
+                Position(side=s1, entry=price, volume=eng.lot(), open_time=ts, strategy=p.number)
             )
 
-        # --- manage open baskets on every M1 bar ---
         for p in PROFILES:
             legs = eng.positions[p.number]
             if not legs:
@@ -296,36 +354,21 @@ def run_backtest(m1: List[dict], initial: float = 5000.0) -> Engine:
             side = legs[0].side
             vol_sum = sum(x.volume for x in legs)
             be = sum(x.entry * x.volume for x in legs) / vol_sum
-            level = max(0, len(legs) - 1)
-            tp_dist = p.tp_base * POINT
+            tp_dist = p.tp_base * GOLD_POINT * scale
             tp = be + tp_dist if side > 0 else be - tp_dist
-
-            # TP hit on bar range
             hit = (side > 0 and high >= tp) or (side < 0 and low <= tp)
             if hit:
                 eng.close_strategy(p.number, tp, ts)
                 continue
-
             if len(legs) >= p.orders_max:
                 continue
-
-            last_ref = legs[0].entry
-            for x in legs[1:]:
-                if side > 0:
-                    last_ref = min(last_ref, x.entry)
-                else:
-                    last_ref = max(last_ref, x.entry)
-            # recovered uses last reference as extreme in adverse direction among legs
-            last_ref = legs[-1].entry  # approximate: last opened
-            # Better match ReadRecoveredCycle lastReference:
             last_ref = legs[0].entry
             for x in legs:
                 if side > 0:
                     last_ref = min(last_ref, x.entry)
                 else:
                     last_ref = max(last_ref, x.entry)
-
-            grid_dist = p.grid_base * POINT
+            grid_dist = p.grid_base * GOLD_POINT * scale
             grid_px = last_ref - grid_dist if side > 0 else last_ref + grid_dist
             add = (side > 0 and low <= grid_px) or (side < 0 and high >= grid_px)
             if add:
@@ -357,7 +400,7 @@ def run_backtest(m1: List[dict], initial: float = 5000.0) -> Engine:
 def summarize(eng: Engine) -> dict:
     trades = eng.closed
     if not trades:
-        return {"n": 0}
+        return {"n": 0, "asset": eng.asset.name}
     wins = [t for t in trades if t.profit > 0]
     losses = [t for t in trades if t.profit <= 0]
     peak = 0.0
@@ -369,21 +412,21 @@ def summarize(eng: Engine) -> dict:
         if dd > max_dd:
             max_dd = dd
             max_dd_pct = 100.0 * dd / peak if peak else 0.0
-
     by_s: Dict[int, List[Closed]] = {}
     for t in trades:
         by_s.setdefault(t.strategy, []).append(t)
-
-    per_strategy = {}
-    for sid, ts_ in sorted(by_s.items()):
-        per_strategy[f"S{sid:02d}"] = {
+    per_strategy = {
+        f"S{sid:02d}": {
             "n": len(ts_),
             "net": round(sum(x.profit for x in ts_), 2),
             "wr": round(sum(1 for x in ts_ if x.profit > 0) / len(ts_), 4),
         }
-
+        for sid, ts_ in sorted(by_s.items())
+    }
     return {
-        "window_note": "Same XAU M1 window as GoldMRScalperGrid data",
+        "asset": eng.asset.name,
+        "distance_scale": eng.asset.scale if not eng.asset.use_atr else "ATR/ATR_ref",
+        "us_index_hours": eng.asset.us_index_hours,
         "set": "IC Markets RAW HIGH RISK (S01,S08,S10,S12)",
         "lots": "Auto Lots High (balance/55250)",
         "initial_balance": 5000.0,
@@ -408,19 +451,46 @@ def summarize(eng: Engine) -> dict:
         "max_concurrent_legs": max((e["positions"] for e in eng.equity_curve), default=0),
         "per_strategy": per_strategy,
         "disclaimer": (
-            "Recovered dual-DeMarker portfolio approx on M1 OHLC; not official QQX "
-            "binary. No spread/commission/swap modeled."
+            "Recovered QQX approx; not official ex5. Index presets scale TP/grid "
+            "and use US hours 13-20 UTC. Need matching M1 bars for real index BT."
         ),
     }
 
 
 def main():
-    m1 = sorted(json.loads((ROOT / "data" / "xau_m1.json").read_text()), key=lambda b: b["time"])
-    eng = run_backtest(m1, 5000.0)
+    ap = argparse.ArgumentParser(description="QQX recovered multi-asset backtest")
+    ap.add_argument("--asset", default="XAU", choices=sorted(ASSETS.keys()))
+    ap.add_argument("--bars", default="", help="M1 JSON path (default data/xau_m1.json)")
+    ap.add_argument("--list-assets", action="store_true")
+    ap.add_argument("--risk", default="high", choices=["low_medium", "medium", "high", "fixed"])
+    args = ap.parse_args()
+
+    if args.list_assets:
+        for k, a in ASSETS.items():
+            print(
+                f"{k}: scale={a.scale} pv={a.point_value_per_lot} "
+                f"us_hours={a.us_index_hours} atr={a.use_atr}"
+            )
+        return
+
+    bars_path = Path(args.bars) if args.bars else ROOT / "data" / "xau_m1.json"
+    m1 = sorted(json.loads(bars_path.read_text()), key=lambda b: b["time"])
+    asset = ASSETS[args.asset]
+    risk_map = {
+        "low_medium": "auto_low_medium",
+        "medium": "auto_medium",
+        "high": "auto_high",
+        "fixed": "fixed",
+    }
+    asset.lot_mode = risk_map[args.risk]
+
+    eng = run_backtest(m1, asset, 5000.0)
     report = summarize(eng)
-    t0 = datetime.fromtimestamp(m1[0]["time"], timezone.utc).isoformat()
-    t1 = datetime.fromtimestamp(m1[-1]["time"], timezone.utc).isoformat()
-    report["window_utc"] = [t0, t1]
+    report["bars_file"] = str(bars_path)
+    report["window_utc"] = [
+        datetime.fromtimestamp(m1[0]["time"], timezone.utc).isoformat(),
+        datetime.fromtimestamp(m1[-1]["time"], timezone.utc).isoformat(),
+    ]
     out = Path(__file__).resolve().parent / "report.json"
     out.write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2))
