@@ -79,7 +79,7 @@ class Engine:
     positions: Dict[int, List[Position]] = field(default_factory=dict)
     closed: List[Closed] = field(default_factory=list)
     equity_curve: List[dict] = field(default_factory=list)
-    lot_mode: str = "auto_medium"  # Medium: balance/60000 (recovered EA)
+    lot_mode: str = "auto_high"  # High: balance/55250 (recovered EA)
     fixed_lot: float = 0.01
 
     def lot(self) -> float:
@@ -87,8 +87,10 @@ class Engine:
             return self.fixed_lot
         if self.lot_mode == "auto_low_medium":
             return max(0.01, round(self.balance / 100000.0, 2))
-        # Medium (default preset in native comments)
-        return max(0.01, round(self.balance / 60000.0, 2))
+        if self.lot_mode == "auto_medium":
+            return max(0.01, round(self.balance / 60000.0, 2))
+        # High
+        return max(0.01, round(self.balance / 55250.0, 2))
 
     def floating(self, price: float) -> float:
         pnl = 0.0
@@ -383,7 +385,7 @@ def summarize(eng: Engine) -> dict:
     return {
         "window_note": "Same XAU M1 window as GoldMRScalperGrid data",
         "set": "IC Markets RAW HIGH RISK (S01,S08,S10,S12)",
-        "lots": "Auto Lots Medium (balance/60000)",
+        "lots": "Auto Lots High (balance/55250)",
         "initial_balance": 5000.0,
         "final_balance": round(eng.balance, 2),
         "net_profit": round(eng.balance - 5000.0, 2),

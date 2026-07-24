@@ -1,41 +1,41 @@
 {
   "window_note": "Same XAU M1 window as GoldMRScalperGrid data",
   "set": "IC Markets RAW HIGH RISK (S01,S08,S10,S12)",
-  "lots": "Auto Lots Medium (balance/60000)",
+  "lots": "Auto Lots High (balance/55250)",
   "initial_balance": 5000.0,
-  "final_balance": 5751.5,
-  "net_profit": 751.5,
+  "final_balance": 5818.5,
+  "net_profit": 818.5,
   "n_closed_legs": 104,
-  "winrate": 0.8462,
-  "avg_profit": 7.23,
-  "avg_win": 8.99,
-  "avg_loss": -2.48,
-  "profit_factor": 19.906,
+  "winrate": 0.8558,
+  "avg_profit": 7.87,
+  "avg_win": 9.69,
+  "avg_loss": -2.93,
+  "profit_factor": 19.602,
   "median_duration_min": 1.0,
-  "max_equity_dd_usd": 126.0,
-  "max_equity_dd_pct": 2.31,
+  "max_equity_dd_usd": 140.0,
+  "max_equity_dd_pct": 2.56,
   "dd_lock_triggered": false,
   "max_concurrent_legs": 3,
   "per_strategy": {
     "S01": {
       "n": 70,
-      "net": 318.0,
+      "net": 347.5,
       "wr": 0.8571
     },
     "S08": {
       "n": 1,
-      "net": 13.5,
+      "net": 15.0,
       "wr": 1.0
     },
     "S10": {
       "n": 15,
-      "net": 264.0,
+      "net": 286.0,
       "wr": 0.8667
     },
     "S12": {
       "n": 18,
-      "net": 156.0,
-      "wr": 0.7778
+      "net": 170.0,
+      "wr": 0.8333
     }
   },
   "disclaimer": "Recovered dual-DeMarker portfolio approx on M1 OHLC; not official QQX binary. No spread/commission/swap modeled.",
