@@ -217,7 +217,7 @@ void OnTick()
    if(count > 0) return;
    if(!HourAllowed()) return;
 
-   // Fresh entries: Stochastic extreme + DeMarker confirmation + stretch/move
+   // Solo openings only: Stochastic extreme + DeMarker. Grid/exits do not use DeM.
    bool demBuy  = (!InpUseDeMarker) || (demVal <= InpDeMOS);
    bool demSell = (!InpUseDeMarker) || (demVal >= InpDeMOB);
 

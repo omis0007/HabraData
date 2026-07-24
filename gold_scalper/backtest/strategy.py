@@ -254,13 +254,10 @@ def run_backtest(bars: List[Dict[str, float]], params: Optional[Params] = None) 
                 # only add if still stretched / not recovered
                 eng.try_open(open_side, price, ts)
 
-        # fresh signals only when flat or same side (try_open handles)
-        sig = signal_at(i, bars, ema, stoch, dem, p)
-        if sig:
-            # if flat -> open; if same side -> try_open may grid
-            if not eng.positions:
-                eng.try_open(sig, bar["close"], ts)
-            elif eng.open_side() == sig:
+        # DeMarker+Stoch only for fresh openings (flat). Grid adds ignore DeMarker.
+        if not eng.positions:
+            sig = signal_at(i, bars, ema, stoch, dem, p)
+            if sig:
                 eng.try_open(sig, bar["close"], ts)
 
         eng.equity_curve.append(
