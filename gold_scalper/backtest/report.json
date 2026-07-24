@@ -1,0 +1,93 @@
+{
+  "preset": "XAU",
+  "bars_file": "/workspace/gold_scalper/data/xau_m1.json",
+  "window_utc": [
+    "2026-04-14T15:13:00+00:00",
+    "2026-07-17T23:57:00+00:00"
+  ],
+  "account_window": {
+    "n_positions": 186,
+    "winrate": 0.8333333333333334,
+    "avg_profit": 5.2649462365591395,
+    "sum_profit": 979.28,
+    "median_duration_min": 2.25,
+    "median_tp_dist": 1.480000000000473,
+    "buy_pct": 0.3978494623655914
+  },
+  "params": {
+    "asset": "XAU",
+    "stoch_period": 14,
+    "stoch_k": 3,
+    "stoch_oversold": 10.0,
+    "stoch_overbought": 90.0,
+    "use_demarker": false,
+    "demarker_period": 14,
+    "demarker_oversold": 0.3,
+    "demarker_overbought": 0.7,
+    "ema_period": 20,
+    "stretch_min": 14.0,
+    "move3_against_min": 5.0,
+    "solo_tp": 1.5,
+    "basket_tp": 0.4,
+    "grid_step": 6.0,
+    "max_positions": 5,
+    "lot": 0.05,
+    "trade_hours": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      9,
+      10,
+      11,
+      15,
+      16,
+      17,
+      18
+    ],
+    "contract_size": 100.0,
+    "point_value_per_lot": 100.0,
+    "use_atr": false,
+    "atr_period": 14,
+    "atr_solo_tp": 0.375,
+    "atr_basket_tp": 0.1,
+    "atr_grid_step": 1.5,
+    "atr_stretch_min": 3.5,
+    "atr_move3_against_min": 1.25
+  },
+  "backtest": {
+    "n_positions": 194,
+    "winrate": 0.8505154639175257,
+    "avg_profit": 5.827319587628489,
+    "sum_profit": 1130.499999999927,
+    "median_duration_min": 1.0,
+    "median_tp_dist": 1.5,
+    "buy_pct": 0.4020618556701031,
+    "final_balance": 6130.499999999926,
+    "max_concurrent_observed": 5
+  },
+  "alignment": {
+    "winrate_bt_vs_account": [
+      0.8505154639175257,
+      0.8333333333333334
+    ],
+    "tp_bt_vs_account": [
+      1.5,
+      1.480000000000473
+    ],
+    "duration_bt_vs_account": [
+      1.0,
+      2.25
+    ],
+    "profit_bt_vs_account": [
+      1130.499999999927,
+      979.28
+    ],
+    "trades_bt_vs_account": [
+      194,
+      186
+    ],
+    "notes": "Preset=XAU. DeMarker optional (default off). Index presets need matching M1 bars for a meaningful result."
+  }
+}

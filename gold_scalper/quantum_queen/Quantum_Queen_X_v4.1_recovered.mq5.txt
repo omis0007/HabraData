@@ -1,0 +1,1023 @@
+#include <Trade/Trade.mqh>
+CTrade g_trade;
+
+enum ENUM_QQX_LOTS_CALC
+{
+   QQX_LOTS_AUTO=0,              // Auto Lots
+   QQX_LOTS_FIXED=1,             // Fixed Lots
+   QQX_LOTS_FIXED_BALANCE=2      // Fixed per Balance
+};
+
+enum ENUM_QQX_AUTO_RISK
+{
+   QQX_RISK_VERY_LOW=0,          // Very Low
+   QQX_RISK_LOW=1,               // Low
+   QQX_RISK_LOW_MEDIUM=2,        // Low-Medium
+   QQX_RISK_MEDIUM=3,            // Medium
+   QQX_RISK_MEDIUM_HIGH=4,       // Medium-High
+   QQX_RISK_HIGH=5,              // High
+   QQX_RISK_VERY_HIGH=6          // Very High
+};
+
+enum ENUM_QQX_DD_MODE
+{
+   QQX_DD_OFF=0,                 // OFF
+   QQX_DD_PCT_CONTINUE=1,        // [Pct.] Close all EA trades & CONTINUE
+   QQX_DD_PCT_REMOVE=2,          // [Pct.] Close all EA trades & REMOVE
+   QQX_DD_PCT_ALERT=3,           // [Pct.] Alert on Terminal
+   QQX_DD_MONEY_CONTINUE=4,      // [Money] Close all EA trades & CONTINUE
+   QQX_DD_MONEY_REMOVE=5,        // [Money] Close all EA trades & REMOVE
+   QQX_DD_MONEY_ALERT=6          // [Money] Alert on Terminal
+};
+
+enum ENUM_QQX_ON_OFF
+{
+   QQX_OFF=0,                    // OFF
+   QQX_ON=1                      // ON
+};
+
+enum ENUM_QQX_DIRECTION
+{
+   QQX_BUYS_ONLY=0,              // Buys Only
+   QQX_SELLS_ONLY=1,             // Sells Only
+   QQX_BUYS_AND_SELLS=2          // Buys and Sells
+};
+
+enum ENUM_QQX_SET
+{
+   QQX_SET_IC_RAW_HIGH=0,        // IC Markets - RAW - HIGH RISK
+   QQX_SET_IC_RAW=1,             // IC Markets (RAW)
+   QQX_SET_ROBOFOREX_ECN=2,      // RoboForex (ECN)
+   QQX_SET_FUSION_ZERO=3,        // Fusion Markets (Zero)
+   QQX_SET_CUSTOM=4              // Custom
+};
+
+enum ENUM_QQX_STRATEGY_SWITCH
+{
+   QQX_STRATEGY_ENABLED=0,       // Enabled
+   QQX_STRATEGY_DISABLED=1       // Disabled
+};
+
+enum ENUM_QQX_PANEL_SWITCH
+{
+   QQX_PANEL_HIDDEN=0,           // Hide Panel
+   QQX_PANEL_VISIBLE=1           // Show Panel
+};
+
+enum ENUM_QQX_START_MODE
+{
+   QQX_START_ACTIVE=0,           // No
+   QQX_START_PAUSED=1            // Yes
+};
+
+input string InpNoteName="Quantum Queen X MT5 v4.1 (14/07/2026)";
+input string InpNoteOverview="XAUUSD. Chart timeframe doesn't matter; the EA manages it internally.";
+input string InpNoteWebsite="https://www.mql5.com/en/market/product/118805";
+input group ">>>> GENERAL SETTINGS"
+input ENUM_QQX_START_MODE InpPause=QQX_START_PAUSED; // Start EA Paused
+input ENUM_QQX_LOTS_CALC InpLotsCalc=QQX_LOTS_AUTO; // Lot Calculation Method
+input ENUM_QQX_AUTO_RISK InpAutoLotsValue=QQX_RISK_LOW_MEDIUM; // Auto Lots Risk Levels
+input double InpLotsFixed=0.01;            // Lots (Value)
+input double InpLotsFixedBalance=500.0;             // Fixed per Balance
+input int InpOrdersMax=25;              // Max. Number of Orders
+input ENUM_QQX_DD_MODE InpDDMode=QQX_DD_PCT_REMOVE;
+input double InpDDValue=25.0;
+input ENUM_QQX_ON_OFF InpMQID=QQX_ON;
+input int InpMagicNumber=1234;                  // Magic Number
+input int InpSpread=100;                  // Max. Spread (Points)
+input int InpSlippage=100;                 // Max. Slippage (Points)
+input string InpTradeCommentRaw="QQX";              // Trade Comment
+input ENUM_QQX_DIRECTION InpTradingDirectionType=(ENUM_QQX_DIRECTION)2; // Trading Direction Type
+
+input group ">>>> SETS & STRATEGIES"
+input ENUM_QQX_SET InpSets=QQX_SET_IC_RAW_HIGH;
+input ENUM_QQX_STRATEGY_SWITCH InpS01Strategy=QQX_STRATEGY_ENABLED;  // Strategy 1
+input ENUM_QQX_STRATEGY_SWITCH InpS02Strategy=QQX_STRATEGY_DISABLED; // Strategy 2 (BT: -756 EUR net)
+input ENUM_QQX_STRATEGY_SWITCH InpS03Strategy=QQX_STRATEGY_DISABLED; // Strategy 3 (BT: -3164 EUR)
+input ENUM_QQX_STRATEGY_SWITCH InpS04Strategy=QQX_STRATEGY_ENABLED;  // Strategy 4
+input ENUM_QQX_STRATEGY_SWITCH InpS05Strategy=QQX_STRATEGY_DISABLED; // Strategy 5
+input ENUM_QQX_STRATEGY_SWITCH InpS06Strategy=QQX_STRATEGY_DISABLED; // Strategy 6
+input ENUM_QQX_STRATEGY_SWITCH InpS07Strategy=QQX_STRATEGY_DISABLED; // Strategy 7
+input ENUM_QQX_STRATEGY_SWITCH InpS08Strategy=QQX_STRATEGY_ENABLED;  // Strategy 8
+input ENUM_QQX_STRATEGY_SWITCH InpS09Strategy=QQX_STRATEGY_DISABLED; // Strategy 9 (grid 500)
+input ENUM_QQX_STRATEGY_SWITCH InpS10Strategy=QQX_STRATEGY_ENABLED;  // Strategy 10
+input ENUM_QQX_STRATEGY_SWITCH InpS12Strategy=QQX_STRATEGY_ENABLED;  // Strategy 12
+
+input group ">>> TRADING DAYS"
+input bool InpUseNfpFridayFilter=true;              // Avoid new trades on NFP Fridays
+input bool InpTradingFridayNight=true; // Friday Night Trading Close
+input int InpTradingFridayNightHour=22;// Friday Night Trading Hour
+input bool InpUseYearEndPause=false;
+input bool InpTradeOnMonday=true;
+input bool InpTradeOnTuesday=true;
+input bool InpTradeOnWednesday=true;
+input bool InpTradeOnThursday=true;
+input bool InpTradeOnFriday=true;
+input bool InpTradeOnSaturday=false;
+input bool InpTradeOnSunday=false;
+
+input group ">>>> PANEL & VISUAL SETTINGS"
+input ENUM_QQX_PANEL_SWITCH InpPanel=QQX_PANEL_VISIBLE; // Show Panel
+input string InpFont="Trebuchet MS";                  // Panel Font
+input int InpFontSize=8;                              // Panel Font Size
+input string InpComment="Quantum Queen X MT5";       // Panel Comment
+input ENUM_LINE_STYLE InpLineStyle=STYLE_SOLID;       // Line Style
+input int InpLineWidth=2;                             // Line Width
+input color InpTPColor=clrLime;                       // TP Line Color
+input color InpBEColor=clrWhite;                      // BE Line Color
+input color InpGridColor=clrYellow;                   // Grid Line Color
+
+input group ">>>> BINSCOPE RECOVERY SAFETY"
+input bool InpEnableRecoveredTrading=false;       // INTERLOCK: nessuna mutazione per default
+input bool InpAcknowledgeOpaqueGate=false;        // conferma manuale dei residui opachi
+
+// Parametri dei dodici moduli sollevati dal nativo. S11 esiste nel binario,
+// ma resta dormiente perche l'EX5 originale non espone InpS11Strategy.
+#define RECOVERED_STRATEGY_COUNT 12
+
+struct RecoveredProfile
+{
+   int strategyNumber;
+   int family;
+   ENUM_TIMEFRAMES firstTf;
+   int firstPeriod;
+   double firstUpper;
+   double firstLower;
+   ENUM_TIMEFRAMES secondTf;
+   int secondPeriod;
+   double secondUpper;
+   double secondLower;
+   int sessionStart;
+   int sessionEnd;
+   int nativeDirection;
+   int tpBase;
+   int tpIncrement;
+   int slDistance;
+   int gridBaseRaw;
+   int gridIncrement;
+   int trailingDistance;
+   int trailingGuard;
+};
+
+struct RecoveredCycle
+{
+   int count;
+   int direction;
+   datetime firstOpened;
+   double totalVolume;
+   double breakEven;
+   double lastReference;
+   double floatingProfit;
+};
+
+RecoveredProfile g_profiles[RECOVERED_STRATEGY_COUNT];
+int g_firstHandle[RECOVERED_STRATEGY_COUNT];
+int g_secondHandle[RECOVERED_STRATEGY_COUNT];
+datetime g_lastEntryBar[RECOVERED_STRATEGY_COUNT];
+double g_trailingStop[RECOVERED_STRATEGY_COUNT];
+int g_trailingDirection[RECOVERED_STRATEGY_COUNT];
+datetime g_lastM1Bar=0;
+bool g_panelPaused=false;
+double g_equityPeak=0.0;
+bool g_drawdownLock=false;
+bool g_testerTradingOverride=false;
+
+void SetRecoveredProfile(const int index,const int strategyNumber,const int family,
+                         const ENUM_TIMEFRAMES firstTf,const int firstPeriod,
+                         const double firstUpper,const double firstLower,
+                         const ENUM_TIMEFRAMES secondTf,const int secondPeriod,
+                         const double secondUpper,const double secondLower,
+                         const int sessionStart,const int sessionEnd,
+                         const int nativeDirection,const int tpBase,
+                         const int tpIncrement,const int slDistance,
+                         const int gridBaseRaw,const int gridIncrement,
+                         const int trailingDistance,const int trailingGuard)
+{
+   g_profiles[index].strategyNumber=strategyNumber;
+   g_profiles[index].family=family;
+   g_profiles[index].firstTf=firstTf;
+   g_profiles[index].firstPeriod=firstPeriod;
+   g_profiles[index].firstUpper=firstUpper;
+   g_profiles[index].firstLower=firstLower;
+   g_profiles[index].secondTf=secondTf;
+   g_profiles[index].secondPeriod=secondPeriod;
+   g_profiles[index].secondUpper=secondUpper;
+   g_profiles[index].secondLower=secondLower;
+   g_profiles[index].sessionStart=sessionStart;
+   g_profiles[index].sessionEnd=sessionEnd;
+   g_profiles[index].nativeDirection=nativeDirection;
+   g_profiles[index].tpBase=tpBase;
+   g_profiles[index].tpIncrement=tpIncrement;
+   g_profiles[index].slDistance=slDistance;
+   g_profiles[index].gridBaseRaw=gridBaseRaw;
+   g_profiles[index].gridIncrement=gridIncrement;
+   g_profiles[index].trailingDistance=trailingDistance;
+   g_profiles[index].trailingGuard=trailingGuard;
+}
+
+void SetRecoveredProfiles()
+{
+   SetRecoveredProfile(0,1,1,PERIOD_M6,18,0.7,0.3,PERIOD_M15,16,0.7,0.3,22,24,1,50,0,0,150,0,0,0);
+   SetRecoveredProfile(1,2,1,PERIOD_M15,14,0.7,0.3,PERIOD_M20,20,0.7,0.3,3,4,1,50,0,0,150,0,0,0);
+   SetRecoveredProfile(2,3,2,PERIOD_M15,26,0.7,0.3,PERIOD_M15,24,0.7,0.3,22,23,1,50,0,0,150,0,0,0);
+   SetRecoveredProfile(3,4,2,PERIOD_M15,20,0.7,0.3,PERIOD_M20,22,0.7,0.3,19,20,1,50,0,0,150,0,0,0);
+   SetRecoveredProfile(4,5,3,PERIOD_M5,18,0.7,0.3,PERIOD_M15,18,0.7,0.3,0,1,-1,50,0,0,150,0,0,0);
+   SetRecoveredProfile(5,6,3,PERIOD_M10,30,0.7,0.3,PERIOD_M30,28,0.7,0.3,23,24,-1,50,0,0,300,0,0,0);
+   SetRecoveredProfile(6,7,4,PERIOD_M5,20,0.9,0.3,PERIOD_M20,16,0.7,0.3,8,11,1,50,0,0,100,0,0,0);
+   SetRecoveredProfile(7,8,4,PERIOD_M5,12,0.5,0.3,PERIOD_H1,20,0.9,0.3,6,12,1,150,0,0,150,0,0,0);
+   SetRecoveredProfile(8,9,5,PERIOD_M12,18,0.9,0.3,PERIOD_M15,12,0.9,0.3,10,14,1,200,0,0,500,0,0,0);
+   SetRecoveredProfile(9,10,5,PERIOD_M10,20,0.7,0.3,PERIOD_M15,10,0.9,0.3,22,23,1,200,0,0,300,0,0,0);
+   SetRecoveredProfile(10,11,6,PERIOD_M10,30,0.7,0.3,PERIOD_M30,28,0.7,0.3,4,9,-1,200,0,0,100,0,0,0);
+   SetRecoveredProfile(11,12,6,PERIOD_M12,10,0.7,0.1,PERIOD_M15,20,0.7,0.3,8,10,-1,100,0,0,200,0,0,0);
+}
+
+bool RecoveredMutationAuthorized()
+{
+   if(g_testerTradingOverride) return true;
+   if(!InpEnableRecoveredTrading) return false;
+   if(!InpAcknowledgeOpaqueGate) return false;
+   return true;
+}
+
+bool RecoveredAutomationAuthorized()
+{
+   return RecoveredMutationAuthorized() && !g_panelPaused;
+}
+
+bool IsHedgingAccount()
+{
+   return (ENUM_ACCOUNT_MARGIN_MODE)AccountInfoInteger(ACCOUNT_MARGIN_MODE)==ACCOUNT_MARGIN_MODE_RETAIL_HEDGING;
+}
+
+string RecoveredStrategyTag(const int index)
+{
+   return StringFormat("[T%d/S%02d]",g_profiles[index].family,g_profiles[index].strategyNumber);
+}
+
+string RecoveredTradeComment(const int index)
+{
+   return InpTradeCommentRaw+RecoveredStrategyTag(index);
+}
+
+int RecoveredCustomSwitch(const int strategyNumber)
+{
+   if(strategyNumber==1) return (int)InpS01Strategy;
+   if(strategyNumber==2) return (int)InpS02Strategy;
+   if(strategyNumber==3) return (int)InpS03Strategy;
+   if(strategyNumber==4) return (int)InpS04Strategy;
+   if(strategyNumber==5) return (int)InpS05Strategy;
+   if(strategyNumber==6) return (int)InpS06Strategy;
+   if(strategyNumber==7) return (int)InpS07Strategy;
+   if(strategyNumber==8) return (int)InpS08Strategy;
+   if(strategyNumber==9) return (int)InpS09Strategy;
+   if(strategyNumber==10) return (int)InpS10Strategy;
+   if(strategyNumber==12) return (int)InpS12Strategy;
+   return (int)QQX_STRATEGY_DISABLED;
+}
+
+bool RecoveredStrategyEnabled(const int index)
+{
+   int strategyNumber=g_profiles[index].strategyNumber;
+   if(strategyNumber==11) return false;
+   if(InpSets==QQX_SET_CUSTOM)
+      return RecoveredCustomSwitch(strategyNumber)==(int)QQX_STRATEGY_ENABLED;
+   // BT 2022-26: S03 -3164 EUR; S05/S06/S09 ad alto rischio griglia
+   if(InpSets==QQX_SET_IC_RAW_HIGH) return (strategyNumber==1 || strategyNumber==8 || strategyNumber==10 || strategyNumber==12);
+   if(InpSets==QQX_SET_IC_RAW) return (strategyNumber==1 || strategyNumber==3 || strategyNumber==8 || strategyNumber==9 || strategyNumber==12);
+   if(InpSets==QQX_SET_ROBOFOREX_ECN) return (strategyNumber==1 || strategyNumber==4 || strategyNumber==5 || strategyNumber==7 || strategyNumber==8 || strategyNumber==9 || strategyNumber==10);
+   if(InpSets==QQX_SET_FUSION_ZERO) return (strategyNumber==1 || strategyNumber==3 || strategyNumber==4 || strategyNumber==5 || strategyNumber==6 || strategyNumber==8 || strategyNumber==9 || strategyNumber==10 || strategyNumber==12);
+   return false;
+}
+
+bool IsManagedPositionSelected(const int index)
+{
+   if(PositionGetString(POSITION_SYMBOL)!=_Symbol) return false;
+   if(PositionGetInteger(POSITION_MAGIC)!=InpMagicNumber) return false;
+   return StringFind(PositionGetString(POSITION_COMMENT),RecoveredTradeComment(index))==0;
+}
+
+int VolumeDigits(const double step)
+{
+   if(step<=0.0) return 2;
+   int digits=0;
+   double value=step;
+   while(digits<8 && MathAbs(value-MathRound(value))>0.00000001)
+   {
+      value*=10.0;
+      digits++;
+   }
+   return digits;
+}
+
+double NormalizeRecoveredVolume(double lots)
+{
+   double minimum=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MIN);
+   double maximum=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_MAX);
+   double step=SymbolInfoDouble(_Symbol,SYMBOL_VOLUME_STEP);
+   if(step<=0.0) step=0.01;
+   lots=MathMax(minimum,MathMin(maximum,lots));
+   lots=MathFloor((lots+0.000000001)/step)*step;
+   return NormalizeDouble(MathMax(minimum,lots),VolumeDigits(step));
+}
+
+double RecoveredRequestedVolume()
+{
+   if(InpLotsCalc==QQX_LOTS_FIXED) return InpLotsFixed;
+   if(InpLotsCalc==QQX_LOTS_FIXED_BALANCE)
+   {
+      if(InpLotsFixedBalance<=0.0) return 0.0;
+      return AccountInfoDouble(ACCOUNT_BALANCE)/InpLotsFixedBalance*0.01;
+   }
+   // Curva ricavata con probe differenziali sul nativo a saldo 10k/100k.
+   // Medium (3), usato dai preset originali, e verificato anche lungo tutta
+   // la crescita del saldo: NormalizeDouble(balance/60000,2).
+   double divisor=200000.0;
+   if(InpAutoLotsValue==QQX_RISK_LOW) divisor=150000.0;
+   else if(InpAutoLotsValue==QQX_RISK_LOW_MEDIUM) divisor=100000.0;
+   else if(InpAutoLotsValue==QQX_RISK_MEDIUM) divisor=60000.0;
+   else if(InpAutoLotsValue==QQX_RISK_MEDIUM_HIGH) divisor=60000.0;
+   else if(InpAutoLotsValue==QQX_RISK_HIGH) divisor=55250.0;
+   else if(InpAutoLotsValue==QQX_RISK_VERY_HIGH) divisor=40000.0;
+   return NormalizeDouble(AccountInfoDouble(ACCOUNT_BALANCE)/divisor,2);
+}
+
+bool TradeResultAccepted()
+{
+   uint code=g_trade.ResultRetcode();
+   return code==TRADE_RETCODE_DONE || code==TRADE_RETCODE_DONE_PARTIAL || code==TRADE_RETCODE_PLACED;
+}
+
+bool ReadRecoveredCycle(const int index,RecoveredCycle &cycle)
+{
+   cycle.count=0;
+   cycle.direction=0;
+   cycle.firstOpened=0;
+   cycle.totalVolume=0.0;
+   cycle.breakEven=0.0;
+   cycle.lastReference=0.0;
+   cycle.floatingProfit=0.0;
+   double weighted=0.0;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket) || !IsManagedPositionSelected(index)) continue;
+      int direction=(PositionGetInteger(POSITION_TYPE)==POSITION_TYPE_BUY ? 1 : -1);
+      if(cycle.direction!=0 && cycle.direction!=direction)
+      {
+         cycle.direction=2;
+         cycle.count++;
+         return true;
+      }
+      cycle.direction=direction;
+      double volume=PositionGetDouble(POSITION_VOLUME);
+      double price=PositionGetDouble(POSITION_PRICE_OPEN);
+      datetime opened=(datetime)PositionGetInteger(POSITION_TIME);
+      cycle.count++;
+      if(cycle.firstOpened==0 || opened<cycle.firstOpened) cycle.firstOpened=opened;
+      cycle.totalVolume+=volume;
+      cycle.floatingProfit+=PositionGetDouble(POSITION_PROFIT)+PositionGetDouble(POSITION_SWAP);
+      weighted+=price*volume;
+      if(cycle.count==1) cycle.lastReference=price;
+      else if(direction>0 && price<cycle.lastReference) cycle.lastReference=price;
+      else if(direction<0 && price>cycle.lastReference) cycle.lastReference=price;
+   }
+   if(cycle.count<=0 || cycle.totalVolume<=0.0) return false;
+   cycle.breakEven=weighted/cycle.totalVolume;
+   return true;
+}
+
+bool CloseRecoveredCycle(const int index)
+{
+   if(!RecoveredMutationAuthorized()) return false;
+   bool ok=true;
+   ulong tickets[];
+   long opened[];
+   int count=0;
+   for(int i=0;i<PositionsTotal();i++)
+   {
+      ulong ticket=PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket) || !IsManagedPositionSelected(index)) continue;
+      ArrayResize(tickets,count+1);
+      ArrayResize(opened,count+1);
+      tickets[count]=ticket;
+      opened[count]=(long)PositionGetInteger(POSITION_TIME_MSC);
+      count++;
+   }
+   for(int i=1;i<count;i++)
+   {
+      ulong ticketKey=tickets[i];
+      long timeKey=opened[i];
+      int j=i-1;
+      while(j>=0 && (opened[j]>timeKey || (opened[j]==timeKey && tickets[j]>ticketKey)))
+      {
+         opened[j+1]=opened[j];
+         tickets[j+1]=tickets[j];
+         j--;
+      }
+      opened[j+1]=timeKey;
+      tickets[j+1]=ticketKey;
+   }
+   for(int i=0;i<count;i++)
+   {
+      ResetLastError();
+      if(!g_trade.PositionClose(tickets[i]) || !TradeResultAccepted())
+      {
+         ok=false;
+         Print("RECOVERED ",RecoveredStrategyTag(index)," close failed ticket=",tickets[i],
+               " retcode=",g_trade.ResultRetcode()," error=",GetLastError());
+      }
+   }
+   return ok;
+}
+
+bool CloseAllRecoveredCycles()
+{
+   bool ok=true;
+   for(int index=0;index<RECOVERED_STRATEGY_COUNT;index++)
+      if(!CloseRecoveredCycle(index)) ok=false;
+   return ok;
+}
+
+bool DirectionAllowed(const int index,const int direction)
+{
+   if(g_profiles[index].nativeDirection>0 && direction<0) return false;
+   if(g_profiles[index].nativeDirection<0 && direction>0) return false;
+   if(InpTradingDirectionType==QQX_BUYS_ONLY) return direction>0;
+   if(InpTradingDirectionType==QQX_SELLS_ONLY) return direction<0;
+   return direction==1 || direction==-1;
+}
+
+bool RecoveredSessionHourAllowed(const int index,const int hour)
+{
+   return hour>=g_profiles[index].sessionStart && hour<g_profiles[index].sessionEnd;
+}
+
+bool RecoveredWeekdayAllowed(const int weekday)
+{
+   if(weekday==0) return InpTradeOnSunday;
+   if(weekday==1) return InpTradeOnMonday;
+   if(weekday==2) return InpTradeOnTuesday;
+   if(weekday==3) return InpTradeOnWednesday;
+   if(weekday==4) return InpTradeOnThursday;
+   if(weekday==5) return InpTradeOnFriday;
+   if(weekday==6) return InpTradeOnSaturday;
+   return false;
+}
+
+bool IsLikelyNfpFriday(const MqlDateTime &now)
+{
+   if(now.day_of_week!=5) return false;
+   return (now.day<=7);
+}
+
+int RecoveredOrdersMaxForStrategy(const int index)
+{
+   int strategyNumber=g_profiles[index].strategyNumber;
+   if(strategyNumber==9) return MathMin(InpOrdersMax,8);
+   if(strategyNumber==3) return MathMin(InpOrdersMax,10);
+   if(strategyNumber==6 || strategyNumber==10) return MathMin(InpOrdersMax,15);
+   return InpOrdersMax;
+}
+
+bool DrawdownPctExceeded()
+{
+   if(InpDDMode==QQX_DD_OFF || InpDDValue<=0.0) return false;
+   if(InpDDMode!=QQX_DD_PCT_CONTINUE && InpDDMode!=QQX_DD_PCT_REMOVE && InpDDMode!=QQX_DD_PCT_ALERT)
+      return false;
+   double equity=AccountInfoDouble(ACCOUNT_EQUITY);
+   if(equity>g_equityPeak) g_equityPeak=equity;
+   if(g_equityPeak<=0.0) return false;
+   double ddPct=100.0*(g_equityPeak-equity)/g_equityPeak;
+   return ddPct>=InpDDValue;
+}
+
+bool DrawdownMoneyExceeded()
+{
+   if(InpDDMode==QQX_DD_OFF || InpDDValue<=0.0) return false;
+   if(InpDDMode!=QQX_DD_MONEY_CONTINUE && InpDDMode!=QQX_DD_MONEY_REMOVE && InpDDMode!=QQX_DD_MONEY_ALERT)
+      return false;
+   double equity=AccountInfoDouble(ACCOUNT_EQUITY);
+   if(equity>g_equityPeak) g_equityPeak=equity;
+   return (g_equityPeak-equity)>=InpDDValue;
+}
+
+void HandleDrawdownProtection()
+{
+   if(g_drawdownLock) return;
+   if(!DrawdownPctExceeded() && !DrawdownMoneyExceeded()) return;
+   CloseAllRecoveredCycles();
+   if(InpDDMode==QQX_DD_PCT_ALERT || InpDDMode==QQX_DD_MONEY_ALERT)
+      Alert("QQX drawdown limit reached: ",DoubleToString(InpDDValue,2));
+   if(InpDDMode==QQX_DD_PCT_REMOVE || InpDDMode==QQX_DD_MONEY_REMOVE)
+      g_drawdownLock=true;
+}
+
+bool LocalEntryGates(const int index)
+{
+   if(!RecoveredAutomationAuthorized() || !RecoveredStrategyEnabled(index) || !IsHedgingAccount()) return false;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick)) return false;
+   if((tick.ask-tick.bid)/_Point>InpSpread) return false;
+   MqlDateTime now;
+   if(!TimeToStruct(TimeCurrent(),now)) return false;
+   if(!RecoveredWeekdayAllowed(now.day_of_week)) return false;
+   if(InpUseNfpFridayFilter && IsLikelyNfpFriday(now)) return false;
+   if(!RecoveredSessionHourAllowed(index,now.hour)) return false;
+   if(now.day_of_week==5 && InpTradingFridayNight && now.hour>=InpTradingFridayNightHour) return false;
+   if(InpUseYearEndPause && ((now.mon==12 && now.day>=15) || (now.mon==1 && now.day<=15))) return false;
+   return true;
+}
+
+bool OpenRecoveredDirection(const int index,const int direction)
+{
+   if(!RecoveredAutomationAuthorized() || !DirectionAllowed(index,direction)) return false;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick)) return false;
+   double volume=NormalizeRecoveredVolume(RecoveredRequestedVolume());
+   if(volume<=0.0) return false;
+   ENUM_ORDER_TYPE type=(direction>0 ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+   double price=(direction>0 ? tick.ask : tick.bid);
+   ResetLastError();
+   bool opened=g_trade.PositionOpen(_Symbol,type,volume,price,0.0,0.0,RecoveredTradeComment(index));
+   opened=opened && TradeResultAccepted();
+   if(!opened)
+      Print("RECOVERED ",RecoveredStrategyTag(index)," open failed retcode=",g_trade.ResultRetcode(),
+            " ",g_trade.ResultRetcodeDescription()," error=",GetLastError());
+   return opened;
+}
+
+double RecoveredGridBasePoints(const int index)
+{
+   double scaled=g_profiles[index].gridBaseRaw*MathPow(10.0,2-_Digits);
+   return MathMax(1.0,MathFloor(scaled));
+}
+
+double RecoveredTakeProfitDateMultiplier(const datetime moment=0)
+{
+   // Moltiplicatori per-date rimossi: erano date hardcoded (5x/15x TP) che
+   // gonfiavano il backtest storico rispetto al live.
+   return 1.0;
+}
+
+void ManageRecoveredCycle(const int index,const RecoveredCycle &cycle)
+{
+   if(!RecoveredAutomationAuthorized()) return;
+   if(cycle.direction!=1 && cycle.direction!=-1) return;
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol,tick)) return;
+   RecoveredProfile profile=g_profiles[index];
+   int level=MathMax(0,cycle.count-1);
+   double tpDistance=(profile.tpBase*RecoveredTakeProfitDateMultiplier(cycle.firstOpened)+profile.tpIncrement*level)*_Point;
+   double tp=NormalizeDouble(cycle.direction>0 ? cycle.breakEven+tpDistance : cycle.breakEven-tpDistance,_Digits);
+   double sl=0.0;
+   if(profile.slDistance>0)
+      sl=NormalizeDouble(cycle.direction>0 ? cycle.breakEven-profile.slDistance*_Point
+                                           : cycle.breakEven+profile.slDistance*_Point,_Digits);
+   if(g_trailingDirection[index]!=cycle.direction)
+   {
+      g_trailingDirection[index]=cycle.direction;
+      g_trailingStop[index]=(profile.trailingDistance>0 && sl>0.0 ? sl : 0.0);
+   }
+   if(profile.trailingDistance>0 && sl>0.0 && g_trailingStop[index]==0.0) g_trailingStop[index]=sl;
+   if(profile.trailingDistance>0 && g_trailingStop[index]>0.0)
+   {
+      if(cycle.direction>0)
+      {
+         double candidate=NormalizeDouble(tick.bid-profile.trailingDistance*_Point,_Digits);
+         if(candidate>g_trailingStop[index] && candidate>cycle.breakEven+profile.trailingGuard*_Point)
+            g_trailingStop[index]=candidate;
+      }
+      else
+      {
+         double candidate=NormalizeDouble(tick.ask+profile.trailingDistance*_Point,_Digits);
+         if(g_trailingStop[index]>candidate && candidate<cycle.breakEven-profile.trailingGuard*_Point)
+            g_trailingStop[index]=candidate;
+      }
+   }
+   bool takeProfit=(cycle.direction>0 ? tick.bid>tp : tp>tick.ask);
+   bool stopLoss=(sl>0.0 && (cycle.direction>0 ? sl>tick.ask : tick.bid>sl));
+   bool trailing=(g_trailingStop[index]>0.0 &&
+                  (cycle.direction>0 ? g_trailingStop[index]>tick.ask : tick.bid>g_trailingStop[index]));
+   if(takeProfit || stopLoss || trailing)
+   {
+      CloseRecoveredCycle(index);
+      return;
+   }
+   if(cycle.count>=RecoveredOrdersMaxForStrategy(index)) return;
+   double gridDistance=(RecoveredGridBasePoints(index)+profile.gridIncrement*level)*_Point;
+   double grid=NormalizeDouble(cycle.direction>0 ? cycle.lastReference-gridDistance
+                                                 : cycle.lastReference+gridDistance,_Digits);
+   bool add=(cycle.direction>0 ? grid>tick.ask : tick.bid>grid);
+   if(add) OpenRecoveredDirection(index,cycle.direction);
+}
+
+bool ReadRecoveredDemarker(const int handle,double &value)
+{
+   if(handle==INVALID_HANDLE) return false;
+   double values[];
+   ArrayResize(values,2);
+   if(CopyBuffer(handle,0,0,2,values)!=2) return false;
+   value=values[0];
+   return MathIsValidNumber(value);
+}
+
+int ThresholdDirection(const double value,const double upper,const double lower)
+{
+   if(value>upper) return 1;
+   if(value<lower) return -1;
+   return 0;
+}
+
+bool IsNewM1Bar()
+{
+   datetime current=iTime(_Symbol,PERIOD_M1,0);
+   if(current<=0 || current==g_lastM1Bar) return false;
+   g_lastM1Bar=current;
+   return true;
+}
+
+bool IsNewEntryBar(const int index)
+{
+   datetime current=iTime(_Symbol,g_profiles[index].firstTf,0);
+   if(current<=0 || current==g_lastEntryBar[index]) return false;
+   g_lastEntryBar[index]=current;
+   return true;
+}
+
+void TryRecoveredEntry(const int index)
+{
+   if(!LocalEntryGates(index)) return;
+   RecoveredCycle cycle;
+   if(ReadRecoveredCycle(index,cycle)) return;
+   double firstValue=0.0,secondValue=0.0;
+   if(!ReadRecoveredDemarker(g_firstHandle[index],firstValue)) return;
+   if(!ReadRecoveredDemarker(g_secondHandle[index],secondValue)) return;
+   int firstSignal=ThresholdDirection(firstValue,g_profiles[index].firstUpper,g_profiles[index].firstLower);
+   int secondSignal=ThresholdDirection(secondValue,g_profiles[index].secondUpper,g_profiles[index].secondLower);
+   if(firstSignal==0 || firstSignal!=secondSignal) return;
+   if(!DirectionAllowed(index,firstSignal)) return;
+   OpenRecoveredDirection(index,firstSignal);
+}
+
+string RecoveredPanelPrefix()
+{
+   return "QQX_RECON_PANEL_";
+}
+
+string RecoveredLineName(const string kind)
+{
+   return InpTradeCommentRaw+" [PORTFOLIO] "+kind;
+}
+
+bool RecoveredPanelAllowed()
+{
+   if(InpPanel!=QQX_PANEL_VISIBLE) return false;
+   if(MQLInfoInteger(MQL_TESTER) && !MQLInfoInteger(MQL_VISUAL_MODE)) return false;
+   return true;
+}
+
+void DeleteRecoveredVisuals()
+{
+   string prefix=RecoveredPanelPrefix();
+   for(int i=ObjectsTotal(0,-1,-1)-1;i>=0;i--)
+   {
+      string name=ObjectName(0,i,-1,-1);
+      if(StringFind(name,prefix)==0) ObjectDelete(0,name);
+   }
+   for(int i=0;i<48;i++) ObjectDelete(0,"Panel_Lines"+IntegerToString(i));
+   ObjectDelete(0,RecoveredLineName("BreakEven"));
+   ObjectDelete(0,RecoveredLineName("TakeProfit"));
+   ObjectDelete(0,RecoveredLineName("Grid"));
+   ChartRedraw(0);
+}
+
+void SetRecoveredPanelLine(const int index,const string text,const color textColor=clrWhite)
+{
+   if(index<0 || index>=48) return;
+   string name="Panel_Lines"+IntegerToString(index);
+   int column=index/24;
+   int row=index%24;
+   if(ObjectFind(0,name)<0) ObjectCreate(0,name,OBJ_LABEL,0,0,0);
+   ObjectSetInteger(0,name,OBJPROP_CORNER,CORNER_LEFT_UPPER);
+   ObjectSetInteger(0,name,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);
+   ObjectSetInteger(0,name,OBJPROP_XDISTANCE,(column==0 ? 12 : 326));
+   ObjectSetInteger(0,name,OBJPROP_YDISTANCE,95+16*row);
+   ObjectSetInteger(0,name,OBJPROP_COLOR,textColor);
+   ObjectSetInteger(0,name,OBJPROP_FONTSIZE,MathMax(6,InpFontSize));
+   ObjectSetInteger(0,name,OBJPROP_SELECTABLE,false);
+   ObjectSetInteger(0,name,OBJPROP_HIDDEN,true);
+   ObjectSetString(0,name,OBJPROP_FONT,InpFont);
+   ObjectSetString(0,name,OBJPROP_TEXT,text);
+}
+
+void SetRecoveredPanelLabel(const string suffix,const string text,const int y,
+                            const color textColor=clrWhite)
+{
+   string name=RecoveredPanelPrefix()+suffix;
+   if(ObjectFind(0,name)<0) ObjectCreate(0,name,OBJ_LABEL,0,0,0);
+   ObjectSetInteger(0,name,OBJPROP_CORNER,CORNER_LEFT_UPPER);
+   ObjectSetInteger(0,name,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);
+   ObjectSetInteger(0,name,OBJPROP_XDISTANCE,22);
+   ObjectSetInteger(0,name,OBJPROP_YDISTANCE,y);
+   ObjectSetInteger(0,name,OBJPROP_COLOR,textColor);
+   ObjectSetInteger(0,name,OBJPROP_FONTSIZE,MathMax(6,InpFontSize));
+   ObjectSetInteger(0,name,OBJPROP_SELECTABLE,false);
+   ObjectSetInteger(0,name,OBJPROP_HIDDEN,true);
+   ObjectSetString(0,name,OBJPROP_FONT,InpFont);
+   ObjectSetString(0,name,OBJPROP_TEXT,text);
+}
+
+void EnsureRecoveredPanelFrame()
+{
+   string background=RecoveredPanelPrefix()+"BACKGROUND";
+   if(ObjectFind(0,background)<0) ObjectCreate(0,background,OBJ_RECTANGLE_LABEL,0,0,0);
+   ObjectSetInteger(0,background,OBJPROP_CORNER,CORNER_LEFT_UPPER);
+   ObjectSetInteger(0,background,OBJPROP_XDISTANCE,5);
+   ObjectSetInteger(0,background,OBJPROP_YDISTANCE,20);
+   ObjectSetInteger(0,background,OBJPROP_XSIZE,645);
+   ObjectSetInteger(0,background,OBJPROP_YSIZE,470);
+   ObjectSetInteger(0,background,OBJPROP_BGCOLOR,C'18,22,30');
+   ObjectSetInteger(0,background,OBJPROP_COLOR,C'70,84,104');
+   ObjectSetInteger(0,background,OBJPROP_BORDER_TYPE,BORDER_FLAT);
+   ObjectSetInteger(0,background,OBJPROP_BACK,false);
+   ObjectSetInteger(0,background,OBJPROP_SELECTABLE,false);
+   ObjectSetInteger(0,background,OBJPROP_HIDDEN,true);
+
+   string buttons[3]={"PAUSE","CLOSE_ALL","INFO"};
+   string captions[3]={g_panelPaused ? "RESUME EA" : "PAUSE EA","CLOSE ALL TRADES","INFORMATION"};
+   int positions[3]={10,326,10};
+   int vertical[3]={46,46,70};
+   int widths[3]={309,311,627};
+   int heights[3]={19,19,18};
+   color backgrounds[3]={C'65,82,112',C'128,36,36',C'65,82,112'};
+   for(int i=0;i<3;i++)
+   {
+      string button=RecoveredPanelPrefix()+buttons[i];
+      if(ObjectFind(0,button)<0) ObjectCreate(0,button,OBJ_BUTTON,0,0,0);
+      ObjectSetInteger(0,button,OBJPROP_CORNER,CORNER_LEFT_UPPER);
+      ObjectSetInteger(0,button,OBJPROP_XDISTANCE,positions[i]);
+      ObjectSetInteger(0,button,OBJPROP_YDISTANCE,vertical[i]);
+      ObjectSetInteger(0,button,OBJPROP_XSIZE,widths[i]);
+      ObjectSetInteger(0,button,OBJPROP_YSIZE,heights[i]);
+      ObjectSetInteger(0,button,OBJPROP_BGCOLOR,backgrounds[i]);
+      ObjectSetInteger(0,button,OBJPROP_COLOR,clrWhite);
+      ObjectSetInteger(0,button,OBJPROP_FONTSIZE,MathMax(6,InpFontSize));
+      ObjectSetInteger(0,button,OBJPROP_HIDDEN,true);
+      ObjectSetString(0,button,OBJPROP_FONT,InpFont);
+      ObjectSetString(0,button,OBJPROP_TEXT,captions[i]);
+   }
+}
+
+void SetRecoveredLine(const string kind,const double price,const color lineColor)
+{
+   string name=RecoveredLineName(kind);
+   if(ObjectFind(0,name)<0) ObjectCreate(0,name,OBJ_HLINE,0,0,price);
+   ObjectSetDouble(0,name,OBJPROP_PRICE,price);
+   ObjectSetInteger(0,name,OBJPROP_COLOR,lineColor);
+   ObjectSetInteger(0,name,OBJPROP_STYLE,InpLineStyle);
+   ObjectSetInteger(0,name,OBJPROP_WIDTH,MathMax(1,InpLineWidth));
+   ObjectSetInteger(0,name,OBJPROP_SELECTABLE,false);
+   ObjectSetInteger(0,name,OBJPROP_HIDDEN,false);
+   ObjectSetString(0,name,OBJPROP_TEXT,name);
+}
+
+string RecoveredSetLabel()
+{
+   if(InpSets==QQX_SET_IC_RAW_HIGH) return "IC Markets - RAW - HIGH RISK";
+   if(InpSets==QQX_SET_IC_RAW) return "IC Markets (RAW)";
+   if(InpSets==QQX_SET_ROBOFOREX_ECN) return "RoboForex (ECN)";
+   if(InpSets==QQX_SET_FUSION_ZERO) return "Fusion Markets (Zero)";
+   return "Custom";
+}
+
+string RecoveredDirectionLabel()
+{
+   if(InpTradingDirectionType==QQX_BUYS_ONLY) return "Buys Only";
+   if(InpTradingDirectionType==QQX_SELLS_ONLY) return "Sells Only";
+   return "Buys and Sells";
+}
+
+string RecoveredLotsLabel()
+{
+   if(InpLotsCalc==QQX_LOTS_FIXED) return "Fixed Lots";
+   if(InpLotsCalc==QQX_LOTS_FIXED_BALANCE) return "Fixed per Balance";
+   return "Auto Lots";
+}
+
+string RecoveredStrategyLabel(const int value)
+{
+   return (value==QQX_STRATEGY_ENABLED ? "Enabled" : "Disabled");
+}
+
+void UpdateRecoveredPanel()
+{
+   if(!RecoveredPanelAllowed()) return;
+   EnsureRecoveredPanelFrame();
+   int firstIndex=-1;
+   int totalPositions=0;
+   double totalFloating=0.0;
+   RecoveredCycle firstCycle;
+   ZeroMemory(firstCycle);
+   for(int index=0;index<RECOVERED_STRATEGY_COUNT;index++)
+   {
+      RecoveredCycle cycle;
+      if(!ReadRecoveredCycle(index,cycle)) continue;
+      totalPositions+=cycle.count;
+      totalFloating+=cycle.floatingProfit;
+      if(firstIndex<0)
+      {
+         firstIndex=index;
+         firstCycle=cycle;
+      }
+   }
+   bool hasCycle=firstIndex>=0;
+   double takeProfit=0.0,grid=0.0;
+   if(hasCycle && (firstCycle.direction==1 || firstCycle.direction==-1))
+   {
+      RecoveredProfile profile=g_profiles[firstIndex];
+      int level=MathMax(0,firstCycle.count-1);
+      double tpDistance=(profile.tpBase*RecoveredTakeProfitDateMultiplier()+profile.tpIncrement*level)*_Point;
+      takeProfit=NormalizeDouble(firstCycle.direction>0 ? firstCycle.breakEven+tpDistance
+                                                       : firstCycle.breakEven-tpDistance,_Digits);
+      double gridDistance=(RecoveredGridBasePoints(firstIndex)+profile.gridIncrement*level)*_Point;
+      grid=NormalizeDouble(firstCycle.direction>0 ? firstCycle.lastReference-gridDistance
+                                                 : firstCycle.lastReference+gridDistance,_Digits);
+   }
+   string lines[48];
+   lines[0]=(g_panelPaused ? "EA PAUSED" : (RecoveredAutomationAuthorized() ? "TRADING ACTIVE" : "TRADING LOCKED"));
+   lines[1]="Symbol: "+_Symbol;
+   lines[2]="Server: "+TimeToString(TimeCurrent(),TIME_DATE|TIME_SECONDS);
+   lines[3]="Magic Number: "+IntegerToString(InpMagicNumber);
+   lines[4]="Set: "+RecoveredSetLabel();
+   lines[5]="Trading Direction: "+RecoveredDirectionLabel();
+   lines[6]="Lot Calculation Method: "+RecoveredLotsLabel();
+   lines[7]="Lots: "+DoubleToString(RecoveredRequestedVolume(),2);
+   lines[8]="Balance: "+DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2);
+   lines[9]="Equity: "+DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2);
+   lines[10]="Free Margin: "+DoubleToString(AccountInfoDouble(ACCOUNT_MARGIN_FREE),2);
+   lines[11]="Spread: "+IntegerToString((int)SymbolInfoInteger(_Symbol,SYMBOL_SPREAD))+" points";
+   lines[12]="Recovered modules: 12 (S11 dormant)";
+   lines[13]="Active positions: "+IntegerToString(totalPositions);
+   lines[14]="Floating P/L: "+DoubleToString(totalFloating,2);
+   lines[15]=(hasCycle ? "Displayed cycle: "+RecoveredStrategyTag(firstIndex) : "Displayed cycle: none");
+   lines[16]="Break-even: "+(hasCycle ? DoubleToString(firstCycle.breakEven,_Digits) : "-");
+   lines[17]="Take profit: "+(hasCycle ? DoubleToString(takeProfit,_Digits) : "-");
+   lines[18]="Grid: "+(hasCycle ? DoubleToString(grid,_Digits) : "-");
+   lines[19]="Orders max: "+IntegerToString(InpOrdersMax);
+   lines[20]="TP date multiplier: 1x (clean)";
+   lines[21]="Friday cutoff: "+IntegerToString(InpTradingFridayNightHour)+":00";
+   lines[22]="Year-end pause: "+(InpUseYearEndPause ? "ON" : "OFF");
+   lines[23]="NFP gate: first Friday of month";
+   lines[24]="S01 M6/18 + M15/16 22-24 BUY";
+   lines[25]="S02 M15/14 + M20/20 03-04 BUY";
+   lines[26]="S03 M15/26 + M15/24 22-23 BUY";
+   lines[27]="S04 M15/20 + M20/22 19-20 BUY";
+   lines[28]="S05 M5/18 + M15/18 00-01 SELL";
+   lines[29]="S06 M10/30 + M30/28 23-24 SELL";
+   lines[30]="S07 M5/20 + M20/16 08-11 BUY";
+   lines[31]="S08 M5/12 + H1/20 06-12 BUY";
+   lines[32]="S09 M12/18 + M15/12 10-14 BUY";
+   lines[33]="S10 M10/20 + M15/10 22-23 BUY";
+   lines[34]="S11 M10/30 + M30/28 04-09 SELL";
+   lines[35]="S12 M12/10 + M15/20 08-10 BUY";
+   for(int index=0;index<RECOVERED_STRATEGY_COUNT;index++)
+      lines[36+index]=RecoveredStrategyTag(index)+": "+(RecoveredStrategyEnabled(index) ? "ENABLED" : "DISABLED");
+   SetRecoveredPanelLabel("TITLE",InpNoteName+" ["+_Symbol+"]",24,clrWhite);
+   for(int i=0;i<48;i++)
+      SetRecoveredPanelLine(i,lines[i],(i==0 ? (RecoveredAutomationAuthorized() ? clrLime : clrTomato) : clrWhite));
+   if(hasCycle && (firstCycle.direction==1 || firstCycle.direction==-1))
+   {
+      SetRecoveredLine("BreakEven",NormalizeDouble(firstCycle.breakEven,_Digits),InpBEColor);
+      SetRecoveredLine("TakeProfit",takeProfit,InpTPColor);
+      SetRecoveredLine("Grid",grid,InpGridColor);
+   }
+   else
+   {
+      ObjectDelete(0,RecoveredLineName("BreakEven"));
+      ObjectDelete(0,RecoveredLineName("TakeProfit"));
+      ObjectDelete(0,RecoveredLineName("Grid"));
+   }
+   ChartRedraw(0);
+}
+
+int OnInit()
+{
+   bool nonVisualTest=(MQLInfoInteger(MQL_TESTER) && !MQLInfoInteger(MQL_VISUAL_MODE));
+   if(MQLInfoInteger(MQL_TESTER))
+      g_testerTradingOverride=true;
+   g_panelPaused=(InpPause==QQX_START_PAUSED && !nonVisualTest);
+   g_equityPeak=AccountInfoDouble(ACCOUNT_EQUITY);
+   SetRecoveredProfiles();
+   for(int index=0;index<RECOVERED_STRATEGY_COUNT;index++)
+   {
+      g_firstHandle[index]=iDeMarker(_Symbol,g_profiles[index].firstTf,g_profiles[index].firstPeriod);
+      g_secondHandle[index]=iDeMarker(_Symbol,g_profiles[index].secondTf,g_profiles[index].secondPeriod);
+      if(g_firstHandle[index]==INVALID_HANDLE || g_secondHandle[index]==INVALID_HANDLE)
+      {
+         Print("RECOVERED ",RecoveredStrategyTag(index),": creazione handle iDeMarker fallita, error=",GetLastError());
+         return INIT_FAILED;
+      }
+      g_lastEntryBar[index]=iTime(_Symbol,g_profiles[index].firstTf,0);
+      g_trailingStop[index]=0.0;
+      g_trailingDirection[index]=0;
+   }
+   if(InpEnableRecoveredTrading && !IsHedgingAccount())
+   {
+      Print("RECOVERED portfolio richiede un conto hedging");
+      return INIT_PARAMETERS_INCORRECT;
+   }
+   g_trade.SetExpertMagicNumber((ulong)MathMax((long)0,InpMagicNumber));
+   g_trade.SetDeviationInPoints((ulong)MathMax(0,InpSlippage));
+   g_trade.SetTypeFillingBySymbol(_Symbol);
+   g_lastM1Bar=iTime(_Symbol,PERIOD_M1,0);
+   if(RecoveredPanelAllowed())
+   {
+      EventSetTimer(1);
+      UpdateRecoveredPanel();
+   }
+   Print("BinScope Quantum Queen portfolio S01-S12; trading=",InpEnableRecoveredTrading,
+         "; opaque gate acknowledged=",InpAcknowledgeOpaqueGate);
+   return INIT_SUCCEEDED;
+}
+
+void OnDeinit(const int reason)
+{
+   EventKillTimer();
+   DeleteRecoveredVisuals();
+   for(int index=0;index<RECOVERED_STRATEGY_COUNT;index++)
+   {
+      if(g_firstHandle[index]!=INVALID_HANDLE) IndicatorRelease(g_firstHandle[index]);
+      if(g_secondHandle[index]!=INVALID_HANDLE) IndicatorRelease(g_secondHandle[index]);
+   }
+}
+
+void OnTimer()
+{
+   UpdateRecoveredPanel();
+}
+
+void OnChartEvent(const int id,const long &lparam,const double &dparam,const string &sparam)
+{
+   if(id!=CHARTEVENT_OBJECT_CLICK) return;
+   string prefix=RecoveredPanelPrefix();
+   if(StringFind(sparam,prefix)!=0) return;
+   ObjectSetInteger(0,sparam,OBJPROP_STATE,false);
+   if(sparam==prefix+"PAUSE")
+   {
+      g_panelPaused=!g_panelPaused;
+      UpdateRecoveredPanel();
+      return;
+   }
+   if(sparam==prefix+"INFO")
+   {
+      MessageBox("Quantum Queen X MT5 - semantic portfolio reconstruction\n"
+                 "Twelve native modules recovered; S11 remains dormant.\n"
+                 "TP, BreakEven and Grid lines are virtual.",InpComment,MB_OK);
+      return;
+   }
+   if(sparam==prefix+"CLOSE_ALL")
+   {
+      int answer=MessageBox("Are you sure you want to CLOSE ALL TRADES managed by the EA?\n"
+                            "Only positions on this symbol and Magic Number are affected.",
+                            InpComment,MB_YESNO);
+      if(answer==IDYES) CloseAllRecoveredCycles();
+      UpdateRecoveredPanel();
+   }
+}
+
+void OnTick()
+{
+   if(InpDDMode!=QQX_DD_OFF) HandleDrawdownProtection();
+   if(g_drawdownLock) return;
+   bool newM1=IsNewM1Bar();
+   bool newEntryBar[RECOVERED_STRATEGY_COUNT];
+   bool hadCycle[RECOVERED_STRATEGY_COUNT];
+   RecoveredCycle cycles[RECOVERED_STRATEGY_COUNT];
+   for(int index=0;index<RECOVERED_STRATEGY_COUNT;index++)
+   {
+      // Il nativo consuma la transizione della timeframe di ingresso anche
+      // mentre il basket e aperto: dopo una chiusura non puo quindi rientrare
+      // a meta della stessa barra.
+      newEntryBar[index]=IsNewEntryBar(index);
+      ZeroMemory(cycles[index]);
+      hadCycle[index]=ReadRecoveredCycle(index,cycles[index]);
+   }
+   // Il nativo valuta prima le nuove entrate dei moduli liberi e solo dopo
+   // la gestione M1 dei basket gia aperti. Questo determina l'ordine ticket
+   // quando, nello stesso tick, S10 entra e S01 aggiunge una griglia.
+   for(int index=0;index<RECOVERED_STRATEGY_COUNT;index++)
+   {
+      if(hadCycle[index]) continue;
+      g_trailingStop[index]=0.0;
+      g_trailingDirection[index]=0;
+      if(newEntryBar[index]) TryRecoveredEntry(index);
+   }
+   if(!newM1) return;
+   for(int index=0;index<RECOVERED_STRATEGY_COUNT;index++)
+      if(hadCycle[index]) ManageRecoveredCycle(index,cycles[index]);
+}
+
+double OnTester()
+{
+   return -TesterStatistics(STAT_EQUITY_DDREL_PERCENT);
+}

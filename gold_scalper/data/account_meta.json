@@ -1,0 +1,9 @@
+{
+  "account": 1013596414,
+  "server": "EquitiBrokerageSC-Live",
+  "symbol": "XAUUSD.pr",
+  "balance_end": 5492.83,
+  "currency": "USD",
+  "n_deals": 859,
+  "note": "Investor-mode history used to reverse-engineer strategy. Do not commit passwords."
+}

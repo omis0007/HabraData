@@ -1,0 +1,51 @@
+{
+  "target_window": {
+    "n": 186,
+    "wr": 0.8333333333333334,
+    "dur": 2.25,
+    "tp": 1.480000000000473,
+    "buy": 0.3978494623655914,
+    "pnl": 979.28
+  },
+  "best": {
+    "score": -20.24421321684519,
+    "n": 194,
+    "wr": 0.8505154639175257,
+    "dur": 1.0,
+    "tp": 1.5,
+    "buy": 0.4020618556701031,
+    "profit": 1130.499999999927,
+    "dd": 770.4000000000106,
+    "ddp": 12.920754716981438
+  },
+  "params": {
+    "stoch_period": 14,
+    "stoch_k": 3,
+    "stoch_oversold": 10.0,
+    "stoch_overbought": 90.0,
+    "ema_period": 20,
+    "stretch_min": 14.0,
+    "move3_against_min": 5.0,
+    "solo_tp": 1.5,
+    "basket_tp": 0.4,
+    "grid_step": 6.0,
+    "max_positions": 5,
+    "lot": 0.05,
+    "trade_hours": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      9,
+      10,
+      11,
+      15,
+      16,
+      17,
+      18
+    ],
+    "contract_size": 100.0,
+    "point_value_per_lot": 100.0
+  }
+}
