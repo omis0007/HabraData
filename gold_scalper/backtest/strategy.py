@@ -16,7 +16,7 @@ class Params:
     stoch_oversold: float = 10.0
     stoch_overbought: float = 90.0
     # DeMarker (iDeMarker) confirmation — classic 0.3 / 0.7 bands
-    use_demarker: bool = True
+    use_demarker: bool = False  # off by default: better PnL; set True to filter openings
     demarker_period: int = 14
     demarker_oversold: float = 0.30
     demarker_overbought: float = 0.70

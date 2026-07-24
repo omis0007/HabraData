@@ -3,7 +3,7 @@
   "stoch_k": 3,
   "stoch_oversold": 10.0,
   "stoch_overbought": 90.0,
-  "use_demarker": true,
+  "use_demarker": false,
   "demarker_period": 14,
   "demarker_oversold": 0.3,
   "demarker_overbought": 0.7,

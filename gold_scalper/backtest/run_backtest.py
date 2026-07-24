@@ -113,8 +113,8 @@ def main():
             "profit_bt_vs_account": [bt.get("sum_profit"), acct.get("sum_profit")],
             "trades_bt_vs_account": [bt.get("n_positions"), acct.get("n_positions")],
             "notes": (
-                "Entries require Stochastic extreme + DeMarker (iDeMarker) confirmation "
-                "(0.3/0.7). Style metrics (WR/TP) align; same-direction grid recovery."
+                "DeMarker optional (default off: better PnL). Style metrics (WR/TP) "
+                "align; same-direction grid recovery."
             ),
         },
     }
