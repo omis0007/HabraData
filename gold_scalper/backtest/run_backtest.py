@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Run gold scalper backtest and compare to live account fingerprint."""
+"""Run MR scalper backtest (asset presets: XAU, NAS100, US30, ATR_AUTO)."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from collections import defaultdict
@@ -13,6 +14,7 @@ from statistics import mean, median
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backtest"))
 
+from presets import PRESETS, apply_preset_to_params, list_presets  # noqa: E402
 from strategy import Params, run_backtest  # noqa: E402
 
 
@@ -84,18 +86,46 @@ def bt_fingerprint(eng):
 
 
 def main():
+    ap = argparse.ArgumentParser(description="MR scalper backtest")
+    ap.add_argument(
+        "--preset",
+        default="XAU",
+        help=f"Asset preset: {', '.join(list_presets())}",
+    )
+    ap.add_argument("--bars", default="", help="Optional M1 JSON path (default: data/xau_m1.json)")
+    ap.add_argument("--list-presets", action="store_true")
+    args = ap.parse_args()
+
+    if args.list_presets:
+        for name, cfg in PRESETS.items():
+            print(f"{name}: {cfg.get('note', '')}")
+            print(
+                f"  TP={cfg.get('solo_tp')} grid={cfg.get('grid_step')} "
+                f"stretch={cfg.get('stretch_min')} hours={cfg.get('trade_hours')} "
+                f"atr={cfg.get('use_atr')}"
+            )
+        return
+
     data = ROOT / "data"
-    bars = load_bars(data / "xau_m1.json")
+    bars_path = Path(args.bars) if args.bars else data / "xau_m1.json"
+    bars = load_bars(bars_path)
     deals = json.loads((data / "account_deals.json").read_text())
     t0, t1 = bars[0]["time"], bars[-1]["time"]
-    acct = fingerprint(positions_from_deals(deals, t0, t1))
+    preset_key = args.preset.upper()
+    acct = (
+        fingerprint(positions_from_deals(deals, t0, t1))
+        if preset_key in ("XAU", "XAUUSD", "GOLD")
+        else {}
+    )
 
-    # Tuned defaults (profitable + style-aligned)
     params = Params()
+    apply_preset_to_params(params, args.preset)
     eng = run_backtest(bars, params)
     bt = bt_fingerprint(eng)
 
     report = {
+        "preset": args.preset,
+        "bars_file": str(bars_path),
         "window_utc": [
             datetime.fromtimestamp(t0, timezone.utc).isoformat(),
             datetime.fromtimestamp(t1, timezone.utc).isoformat(),
@@ -113,8 +143,8 @@ def main():
             "profit_bt_vs_account": [bt.get("sum_profit"), acct.get("sum_profit")],
             "trades_bt_vs_account": [bt.get("n_positions"), acct.get("n_positions")],
             "notes": (
-                "DeMarker optional (default off: better PnL). Style metrics (WR/TP) "
-                "align; same-direction grid recovery."
+                f"Preset={args.preset}. DeMarker optional (default off). "
+                "Index presets need matching M1 bars for a meaningful result."
             ),
         },
     }
@@ -125,6 +155,7 @@ def main():
         json.dumps(params.__dict__, indent=2, default=str)
     )
     print(json.dumps(report["alignment"], indent=2))
+    print("preset", args.preset)
     print("account", acct)
     print("backtest", bt)
     print("wrote", out)

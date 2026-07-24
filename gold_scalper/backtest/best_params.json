@@ -1,4 +1,5 @@
 {
+  "asset": "XAU",
   "stoch_period": 14,
   "stoch_k": 3,
   "stoch_oversold": 10.0,
@@ -30,5 +31,12 @@
     18
   ],
   "contract_size": 100.0,
-  "point_value_per_lot": 100.0
+  "point_value_per_lot": 100.0,
+  "use_atr": false,
+  "atr_period": 14,
+  "atr_solo_tp": 0.375,
+  "atr_basket_tp": 0.1,
+  "atr_grid_step": 1.5,
+  "atr_stretch_min": 3.5,
+  "atr_move3_against_min": 1.25
 }

@@ -1,4 +1,6 @@
 {
+  "preset": "XAU",
+  "bars_file": "/workspace/gold_scalper/data/xau_m1.json",
   "window_utc": [
     "2026-04-14T15:13:00+00:00",
     "2026-07-17T23:57:00+00:00"
@@ -13,6 +15,7 @@
     "buy_pct": 0.3978494623655914
   },
   "params": {
+    "asset": "XAU",
     "stoch_period": 14,
     "stoch_k": 3,
     "stoch_oversold": 10.0,
@@ -44,7 +47,14 @@
       18
     ],
     "contract_size": 100.0,
-    "point_value_per_lot": 100.0
+    "point_value_per_lot": 100.0,
+    "use_atr": false,
+    "atr_period": 14,
+    "atr_solo_tp": 0.375,
+    "atr_basket_tp": 0.1,
+    "atr_grid_step": 1.5,
+    "atr_stretch_min": 3.5,
+    "atr_move3_against_min": 1.25
   },
   "backtest": {
     "n_positions": 194,
@@ -78,6 +88,6 @@
       194,
       186
     ],
-    "notes": "DeMarker optional (default off: better PnL). Style metrics (WR/TP) align; same-direction grid recovery."
+    "notes": "Preset=XAU. DeMarker optional (default off). Index presets need matching M1 bars for a meaningful result."
   }
 }
